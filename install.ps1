@@ -5,11 +5,15 @@ param(
     [switch]$Check,
     [switch]$NonInteractive,
     [switch]$Yes,
+    [string]$SourceDir,
     [switch]$Help
 )
 
 $ErrorActionPreference = "Stop"
-$BaseUrl = if ($env:AVEN_INSTALL_BASE_URL) { $env:AVEN_INSTALL_BASE_URL } else { "https://raw.githubusercontent.com/christophersix66/aven-install/main" }
+$BaseUrl = "https://raw.githubusercontent.com/christophersix66/aven-install/main"
+$CoordinatorSha256 = "1ed19098852c5bd295528b7bdeb3494199097e7812213ea3a12e8fc7d4fe1d5d"
+$RcManifestSha256 = "34d57c0c1d98c2d9305c73e36461e82b21d96a7e7da2e4a72b3bab825be9c553"
+$StableManifestSha256 = "93ef9399559cbc444686917dca9c43ae93df1d0dd8abd0e97c3cc95c47891dd5"
 
 function Show-Usage {
     Write-Output "Install the exact approved private Aven release."
@@ -18,6 +22,7 @@ function Show-Usage {
     Write-Output "  -Check            Check prerequisites and exact release without mutation"
     Write-Output "  -NonInteractive   Disable prompts; installation also requires -Yes"
     Write-Output "  -Yes              Approve bounded prerequisite/install prompts"
+    Write-Output "  -SourceDir PATH   Use and verify files from an inspected local checkout"
 }
 
 if ($Help) {
@@ -89,20 +94,33 @@ $WorkDir = Join-Path $TempBase ("aven-install-entry-" + [Guid]::NewGuid().ToStri
 try {
     $Core = Join-Path $WorkDir "installer.py"
     $Manifest = Join-Path $WorkDir "channel.json"
-    if ($env:AVEN_INSTALL_SOURCE_DIR) {
-        $sourceCore = Join-Path $env:AVEN_INSTALL_SOURCE_DIR "installer.py"
-        $sourceManifest = Join-Path $env:AVEN_INSTALL_SOURCE_DIR "channels\$Channel.json"
+    $EffectiveSourceDir = $SourceDir
+    if (-not $EffectiveSourceDir -and $PSScriptRoot -and
+        (Test-Path -LiteralPath (Join-Path $PSScriptRoot "installer.py") -PathType Leaf) -and
+        (Test-Path -LiteralPath (Join-Path $PSScriptRoot "channels\$Channel.json") -PathType Leaf)) {
+        $EffectiveSourceDir = $PSScriptRoot
+    }
+    if ($EffectiveSourceDir) {
+        $sourceCore = Join-Path $EffectiveSourceDir "installer.py"
+        $sourceManifest = Join-Path $EffectiveSourceDir "channels\$Channel.json"
         if (-not (Test-Path -LiteralPath $sourceCore -PathType Leaf) -or -not (Test-Path -LiteralPath $sourceManifest -PathType Leaf)) {
             throw "installer source or channel manifest is unavailable"
         }
         Copy-Item -LiteralPath $sourceCore -Destination $Core
         Copy-Item -LiteralPath $sourceManifest -Destination $Manifest
     } else {
-        if (-not $BaseUrl.StartsWith("https://", [StringComparison]::OrdinalIgnoreCase)) {
-            throw "installer source URL must use HTTPS"
-        }
         Invoke-WebRequest -UseBasicParsing -Uri "$BaseUrl/installer.py" -OutFile $Core
         Invoke-WebRequest -UseBasicParsing -Uri "$BaseUrl/channels/$Channel.json" -OutFile $Manifest
+    }
+
+    $ManifestSha256 = if ($Channel -eq "rc") { $RcManifestSha256 } else { $StableManifestSha256 }
+    $ObservedCoordinatorSha256 = (Get-FileHash -LiteralPath $Core -Algorithm SHA256).Hash.ToLowerInvariant()
+    $ObservedManifestSha256 = (Get-FileHash -LiteralPath $Manifest -Algorithm SHA256).Hash.ToLowerInvariant()
+    if ($ObservedCoordinatorSha256 -ne $CoordinatorSha256) {
+        throw "INSTALLER_INTEGRITY_MISMATCH"
+    }
+    if ($ObservedManifestSha256 -ne $ManifestSha256) {
+        throw "CHANNEL_INTEGRITY_MISMATCH"
     }
 
     $Arguments = @($Python.Prefix) + @($Core, "--manifest", $Manifest, "--channel", $Channel)

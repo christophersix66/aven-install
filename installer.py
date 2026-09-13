@@ -22,6 +22,23 @@ CHANNEL_SCHEMA = "aven-install.channel.v1"
 UNAVAILABLE_SCHEMA = "aven-install.channel-unavailable.v1"
 EXPECTED_REPOSITORY = "christophersix66/intelligence-workbench"
 INSTALLER_VERSION = "1.0.0"
+MINIMUM_TOOL_VERSIONS = {"git": (2, 20, 0), "gh": (2, 0, 0)}
+APPROVED_RC = {
+    "schema": CHANNEL_SCHEMA,
+    "channel": "rc",
+    "version": "1.0.0-rc.1",
+    "repository": EXPECTED_REPOSITORY,
+    "tag": "v1.0.0-rc.1",
+    "commit": "b66e56796c9bbb4879921d5c77fb9b8dfaa0e3da",
+    "asset": "aven-v1.0.0-rc.1-bootstrap-b66e56796c9bbb4879921d5c77fb9b8dfaa0e3da.tar",
+    "asset_size": 204800,
+    "sha256": "4c6a32d8ac727513e48dcce114631aacc74fb3963180181578a7f0f5bb6fb8d9",
+    "checksum_asset": "aven-v1.0.0-rc.1-bootstrap-b66e56796c9bbb4879921d5c77fb9b8dfaa0e3da.tar.sha256",
+    "build_report_asset": "aven-v1.0.0-rc.1-bootstrap-b66e56796c9bbb4879921d5c77fb9b8dfaa0e3da.build.json",
+    "installation_lock_sha256": "60ac2dcd2795859fdaab8a49aa0de03243eeebfbf0a962cf9a5692b4b46a6887",
+    "workbench_runtime_commit": "d78826ec5068e64e6d16bb590388167653b6e0ca",
+    "prerelease": True,
+}
 MAX_MANIFEST_BYTES = 16_384
 MAX_RELEASE_JSON_BYTES = 2_000_000
 MAX_ARCHIVE_MEMBERS = 128
@@ -112,6 +129,11 @@ def load_channel(path: Path, requested_channel: str) -> Mapping[str, Any]:
         raise InstallerError("RELEASE_MANIFEST_INVALID", "checksum asset is not exactly bound")
     if value["build_report_asset"] != f"{expected_asset[:-4]}.build.json":
         raise InstallerError("RELEASE_MANIFEST_INVALID", "build report asset is not exactly bound")
+    if value != APPROVED_RC:
+        raise InstallerError(
+            "RELEASE_IDENTITY_NOT_APPROVED",
+            "the rc channel does not match the exact owner-approved Aven v1.0.0-rc.1 release",
+        )
     return value
 
 
@@ -121,11 +143,13 @@ def _run(
     timeout: int = 30,
     inherit: bool = False,
     cwd: Path | None = None,
+    env: Mapping[str, str] | None = None,
 ) -> subprocess.CompletedProcess[str]:
     try:
         completed = subprocess.run(
             list(command),
             cwd=cwd,
+            env=env,
             stdin=None if inherit else subprocess.DEVNULL,
             stdout=None if inherit else subprocess.PIPE,
             stderr=None if inherit else subprocess.PIPE,
@@ -141,15 +165,68 @@ def _run(
     return completed
 
 
-def _version(command: str) -> str | None:
+def _run_gh(
+    gh: str,
+    arguments: Sequence[str],
+    *,
+    timeout: int,
+    inherit: bool = False,
+) -> subprocess.CompletedProcess[str]:
+    environment = os.environ.copy()
+    environment["GH_TELEMETRY"] = "0"
+    environment["GH_NO_UPDATE_NOTIFIER"] = "1"
+    environment["GH_NO_EXTENSION_UPDATE_NOTIFIER"] = "1"
+    temp_parent = os.environ.get("AVEN_INSTALL_TMPDIR")
+    with tempfile.TemporaryDirectory(prefix="aven-install-gh-state-", dir=temp_parent) as state_directory:
+        environment["XDG_STATE_HOME"] = state_directory
+        if os.name == "nt":
+            environment["LOCALAPPDATA"] = state_directory
+        return _run((gh, *arguments), timeout=timeout, inherit=inherit, cwd=Path.home(), env=environment)
+
+
+def _resolve_executable(command: str) -> str | None:
     path = shutil.which(command)
     if not path:
         return None
-    completed = _run((path, "--version"), timeout=10)
+    if not Path(path).is_absolute():
+        raise InstallerError("UNTRUSTED_EXECUTABLE_PATH", f"refusing relative executable path for {command}")
+    try:
+        resolved = Path(path).resolve(strict=True)
+        current = Path.cwd().resolve(strict=True)
+    except OSError as error:
+        raise InstallerError("UNTRUSTED_EXECUTABLE_PATH", f"could not resolve {command} safely") from error
+    if resolved == current or resolved.parent == current:
+        raise InstallerError("UNTRUSTED_EXECUTABLE_PATH", f"refusing {command} from the current working directory")
+    return str(resolved)
+
+
+def _version(command: str) -> tuple[str, str] | None:
+    path = _resolve_executable(command)
+    if path is None:
+        return None
+    completed = _run_gh(path, ("--version",), timeout=10) if command == "gh" else _run((path, "--version"), timeout=10)
     if completed.returncode != 0:
-        return "UNUSABLE"
+        return path, "UNUSABLE"
     line = (completed.stdout or completed.stderr).splitlines()
-    return line[0][:160] if line else "AVAILABLE"
+    return path, line[0][:160] if line else "AVAILABLE"
+
+
+def _numeric_version(name: str, text: str) -> tuple[int, int, int] | None:
+    patterns = {
+        "git": r"\bgit version (\d+)\.(\d+)(?:\.(\d+))?",
+        "gh": r"\bgh version (\d+)\.(\d+)(?:\.(\d+))?",
+    }
+    match = re.search(patterns[name], text, flags=re.IGNORECASE)
+    if match is None:
+        return None
+    return tuple(int(item or 0) for item in match.groups())
+
+
+def _usable_tool(name: str, observed: tuple[str, str] | None) -> bool:
+    if observed is None or observed[1] == "UNUSABLE":
+        return False
+    version = _numeric_version(name, observed[1])
+    return version is not None and version >= MINIMUM_TOOL_VERSIONS[name]
 
 
 def platform_identity() -> tuple[str, str]:
@@ -168,8 +245,9 @@ def platform_identity() -> tuple[str, str]:
 def _sudo_prefix() -> list[str]:
     if hasattr(os, "geteuid") and os.geteuid() == 0:
         return []
-    if shutil.which("sudo"):
-        return ["sudo"]
+    sudo = _resolve_executable("sudo")
+    if sudo:
+        return [sudo]
     raise InstallerError("PRIVILEGE_TOOL_UNAVAILABLE", "required package installation needs sudo or an administrator shell")
 
 
@@ -177,22 +255,26 @@ def prerequisite_install_commands(system: str, missing: Sequence[str]) -> list[l
     if not missing:
         return []
     package_names = {"git": "git", "gh": "gh"}
-    if system == "macos" and shutil.which("brew"):
-        return [["brew", "install", *(package_names[item] for item in missing)]]
-    if system == "windows" and shutil.which("winget"):
+    brew = _resolve_executable("brew") if system == "macos" else None
+    if brew:
+        return [[brew, "install", *(package_names[item] for item in missing)]]
+    winget = _resolve_executable("winget") if system == "windows" else None
+    if winget:
         identifiers = {"git": "Git.Git", "gh": "GitHub.cli"}
         return [
-            ["winget", "install", "--id", identifiers[item], "--exact", "--accept-package-agreements", "--accept-source-agreements"]
+            [winget, "install", "--id", identifiers[item], "--exact", "--accept-package-agreements", "--accept-source-agreements"]
             for item in missing
         ]
     if system == "linux":
         prefix = _sudo_prefix()
-        if shutil.which("apt-get"):
-            return [[*prefix, "apt-get", "install", "-y", *(package_names[item] for item in missing)]]
-        if shutil.which("dnf"):
-            return [[*prefix, "dnf", "install", "-y", *(package_names[item] for item in missing)]]
-        if shutil.which("pacman"):
-            return [[*prefix, "pacman", "-S", "--needed", *(package_names[item] for item in missing)]]
+        for manager, arguments in (
+            ("apt-get", ("install", "-y")),
+            ("dnf", ("install", "-y")),
+            ("pacman", ("-S", "--needed")),
+        ):
+            executable = _resolve_executable(manager)
+            if executable:
+                return [[*prefix, executable, *arguments, *(package_names[item] for item in missing)]]
     raise InstallerError(
         "UNSUPPORTED_PACKAGE_MANAGER",
         "install Python 3.11+, Git, and GitHub CLI using the platform's supported package manager",
@@ -213,11 +295,11 @@ def _prompt(question: str, *, assume_yes: bool, non_interactive: bool) -> bool:
         return input(f"{question} [y/N] ").strip().lower() in {"y", "yes"}
 
 
-def ensure_required_tools(system: str, *, check_only: bool, assume_yes: bool, non_interactive: bool) -> Mapping[str, str]:
+def ensure_required_tools(system: str, *, check_only: bool, assume_yes: bool, non_interactive: bool) -> Mapping[str, Mapping[str, str]]:
     observed = {name: _version(name) for name in ("git", "gh")}
-    missing = [name for name, version in observed.items() if version is None or version == "UNUSABLE"]
+    missing = [name for name, version in observed.items() if not _usable_tool(name, version)]
     if not missing:
-        return {name: str(version) for name, version in observed.items()}
+        return {name: {"path": value[0], "version": value[1]} for name, value in observed.items() if value is not None}
     labels = ", ".join(missing)
     if check_only:
         raise InstallerError("PREREQUISITE_MISSING", f"missing or unusable required tools: {labels}")
@@ -231,31 +313,31 @@ def ensure_required_tools(system: str, *, check_only: bool, assume_yes: bool, no
         if _run(command, timeout=600, inherit=True).returncode != 0:
             raise InstallerError("PREREQUISITE_INSTALL_FAILED", f"package manager failed while installing {labels}")
     observed = {name: _version(name) for name in ("git", "gh")}
-    if any(value is None or value == "UNUSABLE" for value in observed.values()):
+    if any(not _usable_tool(name, value) for name, value in observed.items()):
         raise InstallerError("PREREQUISITE_INSTALL_FAILED", "required tools remain unavailable after package installation")
-    return {name: str(version) for name, version in observed.items()}
+    return {name: {"path": value[0], "version": value[1]} for name, value in observed.items() if value is not None}
 
 
-def ensure_github_access(*, check_only: bool, assume_yes: bool, non_interactive: bool) -> None:
-    if _run(("gh", "auth", "status"), timeout=20).returncode != 0:
+def ensure_github_access(gh: str, *, check_only: bool, assume_yes: bool, non_interactive: bool) -> None:
+    if _run_gh(gh, ("auth", "status"), timeout=20).returncode != 0:
         if check_only:
             raise InstallerError("GITHUB_NOT_AUTHENTICATED", "GitHub CLI is not authenticated")
         print("GitHub authentication is required to acquire Aven's private components.")
         if not _prompt("Run GitHub CLI authentication now?", assume_yes=assume_yes, non_interactive=non_interactive):
             raise InstallerError("GITHUB_NOT_AUTHENTICATED", "run: gh auth login")
-        if _run(("gh", "auth", "login"), timeout=900, inherit=True).returncode != 0:
+        if _run_gh(gh, ("auth", "login"), timeout=900, inherit=True).returncode != 0:
             raise InstallerError("GITHUB_NOT_AUTHENTICATED", "GitHub CLI authentication did not complete")
-        if _run(("gh", "auth", "status"), timeout=20).returncode != 0:
+        if _run_gh(gh, ("auth", "status"), timeout=20).returncode != 0:
             raise InstallerError("GITHUB_NOT_AUTHENTICATED", "GitHub CLI remains unauthenticated")
-    access = _run(("gh", "api", f"repos/{EXPECTED_REPOSITORY}", "--jq", ".full_name"), timeout=30)
+    access = _run_gh(gh, ("api", f"repos/{EXPECTED_REPOSITORY}", "--jq", ".full_name"), timeout=30)
     if access.returncode != 0 or access.stdout.strip() != EXPECTED_REPOSITORY:
         raise InstallerError("GITHUB_REPOSITORY_ACCESS_DENIED", f"authenticated GitHub identity cannot read {EXPECTED_REPOSITORY}")
 
 
-def resolve_release(channel: Mapping[str, Any]) -> Mapping[str, Any]:
+def resolve_release(gh: str, channel: Mapping[str, Any]) -> Mapping[str, Any]:
     repository = channel["repository"]
     tag = channel["tag"]
-    tag_result = _run(("gh", "api", f"repos/{repository}/git/ref/tags/{tag}"), timeout=30)
+    tag_result = _run_gh(gh, ("api", f"repos/{repository}/git/ref/tags/{tag}"), timeout=30)
     if tag_result.returncode != 0:
         raise InstallerError("RELEASE_TAG_NOT_FOUND", "approved release tag is unavailable")
     tag_value = _load_json(tag_result.stdout.encode(), code="RELEASE_TAG_MISMATCH", limit=MAX_RELEASE_JSON_BYTES)
@@ -263,7 +345,7 @@ def resolve_release(channel: Mapping[str, Any]) -> Mapping[str, Any]:
     if not isinstance(target, dict) or target.get("type") != "commit" or target.get("sha") != channel["commit"]:
         raise InstallerError("RELEASE_TAG_MISMATCH", "approved release tag does not point to the declared commit")
 
-    release_result = _run(("gh", "api", f"repos/{repository}/releases/tags/{tag}"), timeout=30)
+    release_result = _run_gh(gh, ("api", f"repos/{repository}/releases/tags/{tag}"), timeout=30)
     if release_result.returncode != 0:
         raise InstallerError("RELEASE_NOT_FOUND", "approved GitHub release is unavailable")
     release = _load_json(release_result.stdout.encode(), code="RELEASE_MANIFEST_INVALID", limit=MAX_RELEASE_JSON_BYTES)
@@ -302,12 +384,10 @@ def _conventional_aven(system: str) -> Path:
 
 
 def inspect_existing_aven(system: str, channel: Mapping[str, Any]) -> str:
-    command = shutil.which("aven")
     conventional = _conventional_aven(system)
-    if command is None and conventional.is_file():
-        command = str(conventional)
-    if command is None:
+    if not conventional.is_file():
         return "NOT_INSTALLED"
+    command = str(conventional)
     version = _run((command, "--json", "version"), timeout=30)
     if version.returncode != 0:
         raise InstallerError("AVEN_EXISTING_UNREADABLE", "an existing Aven command could not report exact version identity")
@@ -329,14 +409,14 @@ def inspect_existing_aven(system: str, channel: Mapping[str, Any]) -> str:
     return "ALREADY_INSTALLED"
 
 
-def download_release(channel: Mapping[str, Any], destination: Path) -> None:
+def download_release(gh: str, channel: Mapping[str, Any], destination: Path) -> None:
     command = [
-        "gh", "release", "download", channel["tag"],
+        gh, "release", "download", channel["tag"],
         "--repo", channel["repository"], "--dir", str(destination),
     ]
     for name in (channel["asset"], channel["checksum_asset"], channel["build_report_asset"]):
         command.extend(("--pattern", name))
-    completed = _run(command, timeout=300)
+    completed = _run_gh(gh, tuple(command[1:]), timeout=300)
     if completed.returncode != 0:
         raise InstallerError("RELEASE_DOWNLOAD_FAILED", "GitHub CLI could not download the approved release assets")
 
@@ -413,7 +493,7 @@ def safe_extract(archive: Path, destination: Path) -> None:
                 extracted = source.extractfile(member)
                 if extracted is None:
                     raise InstallerError("ARCHIVE_UNSAFE", "archive file content is unavailable")
-                with target.open("xb") as output:
+                with extracted, target.open("xb") as output:
                     shutil.copyfileobj(extracted, output, length=1024 * 1024)
                 target.chmod(0o700 if target.name == "aven-bootstrap" else 0o600)
     except InstallerError:
@@ -430,12 +510,10 @@ def _invoke_bootstrap(python: str, bootstrap: Path, action: str, *, inherit: boo
 
 
 def post_install_health(system: str, channel: Mapping[str, Any]) -> Path:
-    command = shutil.which("aven")
     expected = _conventional_aven(system)
-    if command is None and expected.is_file():
-        command = str(expected)
-    if command is None:
+    if not expected.is_file():
         raise InstallerError("AVEN_POST_INSTALL_UNHEALTHY", "installed Aven launcher was not found")
+    command = str(expected)
     for arguments in (("version",), ("status",), ("doctor", "--installation-only")):
         completed = _run((command, *arguments), timeout=180, inherit=True)
         if completed.returncode != 0:
@@ -471,20 +549,21 @@ def main(argv: Sequence[str] | None = None) -> int:
         print("Aven Installer")
         print(f"System: {system} {architecture}")
         print(f"Python: {platform.python_version()}")
-        print(f"Git: {tools['git']}")
-        print(f"GitHub CLI: {tools['gh']}")
+        print(f"Git: {tools['git']['version']}")
+        print(f"GitHub CLI: {tools['gh']['version']}")
         print(f"Channel: {channel['channel']} ({channel['version']})")
         print(f"Codex: {'DETECTED' if shutil.which('codex') else 'NOT_DETECTED_OPTIONAL'}")
         print(f"Claude: {'DETECTED' if shutil.which('claude') else 'NOT_DETECTED_OPTIONAL'}")
         print("Voice: optional; configured by Aven after installation")
 
         ensure_github_access(
+            tools["gh"]["path"],
             check_only=arguments.check,
             assume_yes=arguments.yes,
             non_interactive=arguments.non_interactive,
         )
         print(f"GitHub private repository access: {EXPECTED_REPOSITORY}")
-        resolve_release(channel)
+        resolve_release(tools["gh"]["path"], channel)
         print(f"Approved release: {channel['tag']} at {channel['commit']}")
         existing = inspect_existing_aven(system, channel)
         if existing == "ALREADY_INSTALLED":
@@ -505,7 +584,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             extracted = root / "bootstrap"
             download.mkdir(mode=0o700)
             extracted.mkdir(mode=0o700)
-            download_release(channel, download)
+            download_release(tools["gh"]["path"], channel, download)
             archive = verify_download(channel, download)
             print(f"Artifact SHA-256 verified: {channel['sha256']}")
             safe_extract(archive, extracted)

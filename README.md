@@ -22,12 +22,13 @@ The current default channel is explicitly `rc`: Aven `1.0.0-rc.1`. Stable `1.0.0
 2. Requires Python 3.11+, Git, and GitHub CLI; it can offer a bounded package-manager command for a missing prerequisite.
 3. Uses `gh auth login` when the operator approves normal GitHub authentication.
 4. Verifies authenticated read access to the private Aven repository.
-5. Resolves the exact tag, commit, pre-release, asset name, size, and digest from `channels/rc.json`.
-6. Downloads the private release with GitHub CLI into an owned temporary directory.
-7. Verifies the local SHA-256, checksum file, and build report.
-8. Rejects unsafe archive paths, links, devices, collisions, or expansion beyond the fixed bound.
-9. Runs Aven's authoritative `setup --plan`, asks for confirmation, then runs `setup --apply`.
-10. Runs the installed `aven version`, `aven status`, and `aven doctor` and prints first-use commands.
+5. Verifies that the coordinator and channel bytes match the entrypoint's compiled SHA-256 values, then requires the channel to equal the exact owner-approved RC identity.
+6. Resolves the exact tag, commit, pre-release, asset name, size, and digest from `channels/rc.json`.
+7. Downloads the private release with GitHub CLI into an owned temporary directory.
+8. Verifies the local SHA-256, checksum file, and build report.
+9. Rejects unsafe archive paths, links, devices, collisions, or expansion beyond the fixed bound.
+10. Runs Aven's authoritative `setup --plan`, asks for confirmation, then runs `setup --apply`.
+11. Runs the installed `aven version`, `aven status`, and `aven doctor` and prints first-use commands.
 
 The installer does not acquire or arrange the seven components itself. It stops being responsible once it invokes the verified Aven bootstrap.
 
@@ -64,13 +65,13 @@ Pipe-to-shell is convenient, not intrinsically trusted. To inspect and execute l
 ```bash
 git clone https://github.com/christophersix66/aven-install.git
 cd aven-install
-git log -1 --show-signature
+git rev-parse HEAD
 less install.sh installer.py channels/rc.json
 ./install.sh --check --channel rc
 ./install.sh --channel rc
 ```
 
-For a reproducible review, check out the exact installer commit accepted by your organization before inspection. The channel manifest still fails closed unless the private Aven tag, source commit, release posture, asset identity, and SHA-256 all match.
+When run from a checkout, the entrypoint automatically uses the adjacent coordinator and channel files and verifies their compiled SHA-256 values. For a reproducible review, check out the exact installer commit accepted by your organization before inspection. The coordinator also fails closed unless the channel is the exact approved private Aven `v1.0.0-rc.1` identity and its tag, source commit, release posture, asset identity, and SHA-256 all match.
 
 ## Non-interactive use
 

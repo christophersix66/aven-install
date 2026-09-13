@@ -10,6 +10,9 @@ The installer prints a stable error code followed by the next useful action.
 | `GITHUB_REPOSITORY_ACCESS_DENIED` | Authentication exists but cannot read private Aven | Ask the repository owner for access, then rerun `--check` |
 | `STABLE_RELEASE_UNAVAILABLE` | Stable Aven has not been released | Select `rc` only if you intend to install the release candidate |
 | `RELEASE_MANIFEST_INVALID` | Channel input is malformed or unsafe | Re-download the installer from the canonical public repository |
+| `INSTALLER_INTEGRITY_MISMATCH` | Coordinator bytes differ from the reviewed entrypoint | Stop and obtain all installer files from one exact repository revision |
+| `CHANNEL_INTEGRITY_MISMATCH` | Channel bytes differ from the reviewed entrypoint | Stop and obtain all installer files from one exact repository revision |
+| `RELEASE_IDENTITY_NOT_APPROVED` | Channel names a release other than the exact approved private RC | Stop; do not substitute another release |
 | `RELEASE_TAG_MISMATCH` | The private tag/release does not match the approved commit | Stop; do not substitute another release |
 | `RELEASE_ASSET_NOT_FOUND` | Required reviewed release material is missing | Stop and contact the release owner |
 | `ARTIFACT_SHA256_MISMATCH` | Downloaded bytes or checksum differ | Stop; delete the temporary download and investigate |

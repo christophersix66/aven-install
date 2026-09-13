@@ -50,6 +50,16 @@ class ChannelManifestTests(unittest.TestCase):
             with self.assertRaises(installer.InstallerError):
                 installer.load_channel(path, "rc")
 
+    def test_manifest_rejects_internally_consistent_unapproved_release(self) -> None:
+        value = json.loads((ROOT / "channels/rc.json").read_text())
+        value["installation_lock_sha256"] = "0" * 64
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "channel.json"
+            path.write_text(json.dumps(value), encoding="utf-8")
+            with self.assertRaises(installer.InstallerError) as caught:
+                installer.load_channel(path, "rc")
+        self.assertEqual(caught.exception.code, "RELEASE_IDENTITY_NOT_APPROVED")
+
     def test_duplicate_json_keys_fail_closed(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "channel.json"

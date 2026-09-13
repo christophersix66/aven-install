@@ -5,7 +5,11 @@ CHANNEL=rc
 CHECK=0
 NON_INTERACTIVE=0
 ASSUME_YES=0
-BASE_URL=${AVEN_INSTALL_BASE_URL:-https://raw.githubusercontent.com/christophersix66/aven-install/main}
+SOURCE_DIR=
+BASE_URL=https://raw.githubusercontent.com/christophersix66/aven-install/main
+COORDINATOR_SHA256=1ed19098852c5bd295528b7bdeb3494199097e7812213ea3a12e8fc7d4fe1d5d
+RC_MANIFEST_SHA256=34d57c0c1d98c2d9305c73e36461e82b21d96a7e7da2e4a72b3bab825be9c553
+STABLE_MANIFEST_SHA256=93ef9399559cbc444686917dca9c43ae93df1d0dd8abd0e97c3cc95c47891dd5
 
 usage() {
   printf '%s\n' \
@@ -17,6 +21,7 @@ usage() {
     '  --check             Check prerequisites and exact release without mutation' \
     '  --non-interactive   Disable prompts; installation also requires --yes' \
     '  --yes               Approve bounded prerequisite/install prompts' \
+    '  --source-dir PATH   Use and verify files from an inspected local checkout' \
     '  --help              Show this help'
 }
 
@@ -30,6 +35,11 @@ while [ "$#" -gt 0 ]; do
     --check) CHECK=1; shift ;;
     --non-interactive) NON_INTERACTIVE=1; shift ;;
     --yes) ASSUME_YES=1; shift ;;
+    --source-dir)
+      [ "$#" -ge 2 ] || { printf '%s\n' 'Aven Installer stopped: missing source directory' >&2; exit 2; }
+      SOURCE_DIR=$2
+      shift 2
+      ;;
     --help|-h) usage; exit 0 ;;
     *) printf '%s\n' "Aven Installer stopped: unknown option: $1" >&2; usage >&2; exit 2 ;;
   esac
@@ -106,8 +116,21 @@ if [ -z "$PYTHON" ]; then
   [ -n "$PYTHON" ] || { printf '%s\n' 'Aven Installer stopped: PYTHON_TOO_OLD' >&2; exit 2; }
 fi
 
-if [ -n "${AVEN_INSTALL_SOURCE_DIR:-}" ]; then
-  SOURCE_DIR=$AVEN_INSTALL_SOURCE_DIR
+WORK_DIR=$(mktemp -d "${TMPDIR:-/tmp}/aven-install-entry.XXXXXXXX")
+cleanup() { rm -rf "$WORK_DIR"; }
+trap cleanup EXIT HUP INT TERM
+
+if [ -z "$SOURCE_DIR" ]; then
+  script_name=$(basename -- "$0" 2>/dev/null || printf unknown)
+  if [ "$script_name" = install.sh ]; then
+    script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" 2>/dev/null && pwd || true)
+    if [ -n "$script_dir" ] && [ -f "$script_dir/installer.py" ] && [ -f "$script_dir/channels/$CHANNEL.json" ]; then
+      SOURCE_DIR=$script_dir
+    fi
+  fi
+fi
+
+if [ -n "$SOURCE_DIR" ]; then
   [ -f "$SOURCE_DIR/installer.py" ] && [ ! -L "$SOURCE_DIR/installer.py" ] || {
     printf '%s\n' 'Aven Installer stopped: installer source is unavailable' >&2
     exit 2
@@ -116,36 +139,34 @@ if [ -n "${AVEN_INSTALL_SOURCE_DIR:-}" ]; then
     printf '%s\n' 'Aven Installer stopped: channel manifest is unavailable' >&2
     exit 2
   }
-  set -- "$PYTHON" "$SOURCE_DIR/installer.py" --manifest "$SOURCE_DIR/channels/$CHANNEL.json" --channel "$CHANNEL"
-  [ "$CHECK" -eq 0 ] || set -- "$@" --check
-  [ "$NON_INTERACTIVE" -eq 0 ] || set -- "$@" --non-interactive
-  [ "$ASSUME_YES" -eq 0 ] || set -- "$@" --yes
-  "$@"
-  exit $?
-fi
-
-command -v curl >/dev/null 2>&1 || {
-  printf '%s\n' 'Aven Installer stopped: CURL_NOT_FOUND' 'Download install.sh and installer.py manually from the public installer repository.' >&2
-  exit 2
-}
-
-WORK_DIR=$(mktemp -d "${TMPDIR:-/tmp}/aven-install-entry.XXXXXXXX")
-cleanup() { rm -rf "$WORK_DIR"; }
-trap cleanup EXIT HUP INT TERM
-
-case "$BASE_URL" in
-  https://*) CURL_SECURITY='https' ;;
-  file://*) CURL_SECURITY='local' ;;
-  *) printf '%s\n' 'Aven Installer stopped: installer source URL must use HTTPS' >&2; exit 2 ;;
-esac
-
-if [ "$CURL_SECURITY" = https ]; then
+  cp "$SOURCE_DIR/installer.py" "$WORK_DIR/installer.py"
+  cp "$SOURCE_DIR/channels/$CHANNEL.json" "$WORK_DIR/channel.json"
+else
+  command -v curl >/dev/null 2>&1 || {
+    printf '%s\n' 'Aven Installer stopped: CURL_NOT_FOUND' 'Download the public installer repository and run install.sh locally.' >&2
+    exit 2
+  }
   curl --proto '=https' --tlsv1.2 -fsSL "$BASE_URL/installer.py" -o "$WORK_DIR/installer.py"
   curl --proto '=https' --tlsv1.2 -fsSL "$BASE_URL/channels/$CHANNEL.json" -o "$WORK_DIR/channel.json"
-else
-  curl -fsSL "$BASE_URL/installer.py" -o "$WORK_DIR/installer.py"
-  curl -fsSL "$BASE_URL/channels/$CHANNEL.json" -o "$WORK_DIR/channel.json"
 fi
+
+case "$CHANNEL" in
+  rc) MANIFEST_SHA256=$RC_MANIFEST_SHA256 ;;
+  stable) MANIFEST_SHA256=$STABLE_MANIFEST_SHA256 ;;
+esac
+
+verify_sha256() {
+  "$PYTHON" -c 'import hashlib, pathlib, sys; actual=hashlib.sha256(pathlib.Path(sys.argv[1]).read_bytes()).hexdigest(); raise SystemExit(0 if actual == sys.argv[2] else 1)' "$1" "$2"
+}
+
+verify_sha256 "$WORK_DIR/installer.py" "$COORDINATOR_SHA256" || {
+  printf '%s\n' 'Aven Installer stopped: INSTALLER_INTEGRITY_MISMATCH' >&2
+  exit 2
+}
+verify_sha256 "$WORK_DIR/channel.json" "$MANIFEST_SHA256" || {
+  printf '%s\n' 'Aven Installer stopped: CHANNEL_INTEGRITY_MISMATCH' >&2
+  exit 2
+}
 
 set -- "$PYTHON" "$WORK_DIR/installer.py" --manifest "$WORK_DIR/channel.json" --channel "$CHANNEL"
 [ "$CHECK" -eq 0 ] || set -- "$@" --check

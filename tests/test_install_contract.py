@@ -3,7 +3,9 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import os
 from pathlib import Path
+import shutil
 import subprocess
 import tarfile
 import tempfile
@@ -97,13 +99,13 @@ class InstallContractTests(unittest.TestCase):
             _completed(json.dumps({"object": {"type": "commit", "sha": self.channel["commit"]}})),
             _completed(json.dumps(release)),
         ])
-        with mock.patch("installer._run", side_effect=lambda *args, **kwargs: next(results)):
-            installer.resolve_release(self.channel)
+        with mock.patch("installer._run_gh", side_effect=lambda *args, **kwargs: next(results)):
+            installer.resolve_release("/usr/bin/gh", self.channel)
 
     def test_release_resolution_rejects_tag_rebound(self) -> None:
-        with mock.patch("installer._run", return_value=_completed(json.dumps({"object": {"type": "commit", "sha": "0" * 40}}))):
+        with mock.patch("installer._run_gh", return_value=_completed(json.dumps({"object": {"type": "commit", "sha": "0" * 40}}))):
             with self.assertRaises(installer.InstallerError) as caught:
-                installer.resolve_release(self.channel)
+                installer.resolve_release("/usr/bin/gh", self.channel)
         self.assertEqual(caught.exception.code, "RELEASE_TAG_MISMATCH")
 
     def test_release_resolution_rejects_duplicate_assets(self) -> None:
@@ -123,9 +125,9 @@ class InstallContractTests(unittest.TestCase):
             _completed(json.dumps({"object": {"type": "commit", "sha": self.channel["commit"]}})),
             _completed(json.dumps(release)),
         ])
-        with mock.patch("installer._run", side_effect=lambda *args, **kwargs: next(results)):
+        with mock.patch("installer._run_gh", side_effect=lambda *args, **kwargs: next(results)):
             with self.assertRaises(installer.InstallerError) as caught:
-                installer.resolve_release(self.channel)
+                installer.resolve_release("/usr/bin/gh", self.channel)
         self.assertEqual(caught.exception.code, "RELEASE_ASSET_MISMATCH")
 
     def test_download_verification_checks_digest_checksum_and_report(self) -> None:
@@ -156,7 +158,7 @@ class InstallContractTests(unittest.TestCase):
         stdout = io.StringIO()
         with (
             mock.patch("installer.platform_identity", return_value=("linux", "x86_64")),
-            mock.patch("installer.ensure_required_tools", return_value={"git": "git 2", "gh": "gh 2"}),
+            mock.patch("installer.ensure_required_tools", return_value={"git": {"path": "/usr/bin/git", "version": "git version 2.40.0"}, "gh": {"path": "/usr/bin/gh", "version": "gh version 2.40.0"}}),
             mock.patch("installer.ensure_github_access"),
             mock.patch("installer.resolve_release"),
             mock.patch("installer.inspect_existing_aven", return_value="NOT_INSTALLED"),
@@ -176,7 +178,7 @@ class InstallContractTests(unittest.TestCase):
             archive.write_bytes(b"fixture")
             with (
                 mock.patch("installer.platform_identity", return_value=("macos", "arm64")),
-                mock.patch("installer.ensure_required_tools", return_value={"git": "git 2", "gh": "gh 2"}),
+                mock.patch("installer.ensure_required_tools", return_value={"git": {"path": "/usr/bin/git", "version": "git version 2.40.0"}, "gh": {"path": "/usr/bin/gh", "version": "gh version 2.40.0"}}),
                 mock.patch("installer.ensure_github_access"),
                 mock.patch("installer.resolve_release"),
                 mock.patch("installer.inspect_existing_aven", return_value="NOT_INSTALLED"),
@@ -194,7 +196,7 @@ class InstallContractTests(unittest.TestCase):
     def test_noninteractive_apply_requires_explicit_yes(self) -> None:
         with (
             mock.patch("installer.platform_identity", return_value=("windows", "x86_64")),
-            mock.patch("installer.ensure_required_tools", return_value={"git": "git 2", "gh": "gh 2"}),
+            mock.patch("installer.ensure_required_tools", return_value={"git": {"path": "/usr/bin/git", "version": "git version 2.40.0"}, "gh": {"path": "/usr/bin/gh", "version": "gh version 2.40.0"}}),
             mock.patch("installer.ensure_github_access"),
             mock.patch("installer.resolve_release"),
             mock.patch("installer.inspect_existing_aven", return_value="NOT_INSTALLED"),
@@ -207,10 +209,79 @@ class InstallContractTests(unittest.TestCase):
             installer._run(("gh", "auth", "status"))
         self.assertIs(run.call_args.kwargs["shell"], False)
 
+    def test_github_commands_disable_telemetry_and_use_neutral_cwd(self) -> None:
+        with mock.patch("installer._run", return_value=_completed()) as run:
+            installer._run_gh("/usr/bin/gh", ("auth", "status"), timeout=20)
+        self.assertEqual(run.call_args.args[0], ("/usr/bin/gh", "auth", "status"))
+        self.assertEqual(run.call_args.kwargs["cwd"], Path.home())
+        self.assertEqual(run.call_args.kwargs["env"]["GH_TELEMETRY"], "0")
+        self.assertEqual(run.call_args.kwargs["env"]["GH_NO_UPDATE_NOTIFIER"], "1")
+
     def test_package_manager_commands_are_fixed_argument_arrays(self) -> None:
-        with mock.patch("installer.shutil.which", side_effect=lambda item: "/usr/bin/apt-get" if item == "apt-get" else None), mock.patch("installer._sudo_prefix", return_value=["sudo"]):
+        with mock.patch("installer._resolve_executable", side_effect=lambda item: "/usr/bin/apt-get" if item == "apt-get" else None), mock.patch("installer._sudo_prefix", return_value=["/usr/bin/sudo"]):
             commands = installer.prerequisite_install_commands("linux", ["git", "gh"])
-        self.assertEqual(commands, [["sudo", "apt-get", "install", "-y", "git", "gh"]])
+        self.assertEqual(commands, [["/usr/bin/sudo", "/usr/bin/apt-get", "install", "-y", "git", "gh"]])
+
+    def test_tool_versions_are_parsed_and_too_old_is_rejected(self) -> None:
+        self.assertTrue(installer._usable_tool("git", ("/usr/bin/git", "git version 2.44.1")))
+        self.assertTrue(installer._usable_tool("gh", ("/usr/bin/gh", "gh version 2.45.0 (2024-02-21)")))
+        self.assertFalse(installer._usable_tool("git", ("/usr/bin/git", "git version 1.9.5")))
+        self.assertFalse(installer._usable_tool("gh", ("/usr/bin/gh", "unexpected output")))
+
+    def test_relative_executable_path_is_rejected(self) -> None:
+        with mock.patch("installer.shutil.which", return_value="./gh"):
+            with self.assertRaises(installer.InstallerError) as caught:
+                installer._resolve_executable("gh")
+        self.assertEqual(caught.exception.code, "UNTRUSTED_EXECUTABLE_PATH")
+
+    def test_ambient_aven_cannot_counterfeit_installed_state(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            expected = Path(temporary) / "owned" / "aven"
+            with (
+                mock.patch("installer._conventional_aven", return_value=expected),
+                mock.patch("installer.shutil.which", return_value=str(Path(temporary) / "attacker" / "aven")),
+            ):
+                self.assertEqual(installer.inspect_existing_aven("linux", self.channel), "NOT_INSTALLED")
+
+    @unittest.skipIf(os.name == "nt", "POSIX entrypoint test")
+    def test_shell_entrypoint_rejects_tampered_coordinator(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            source = Path(temporary) / "source"
+            (source / "channels").mkdir(parents=True)
+            (source / "installer.py").write_text("raise SystemExit('should not execute')\n", encoding="utf-8")
+            shutil.copy2(ROOT / "channels/rc.json", source / "channels/rc.json")
+            environment = os.environ.copy()
+            environment["TMPDIR"] = temporary
+            completed = subprocess.run(
+                ("sh", str(ROOT / "install.sh"), "--source-dir", str(source), "--check"),
+                env=environment,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+            )
+        self.assertEqual(completed.returncode, 2)
+        self.assertIn("INSTALLER_INTEGRITY_MISMATCH", completed.stderr)
+
+    @unittest.skipUnless(shutil.which("pwsh"), "PowerShell is unavailable")
+    def test_powershell_entrypoint_rejects_tampered_coordinator(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            source = Path(temporary) / "source"
+            (source / "channels").mkdir(parents=True)
+            (source / "installer.py").write_text("raise SystemExit('should not execute')\n", encoding="utf-8")
+            shutil.copy2(ROOT / "channels/rc.json", source / "channels/rc.json")
+            environment = os.environ.copy()
+            environment["AVEN_INSTALL_TMPDIR"] = temporary
+            completed = subprocess.run(
+                ("pwsh", "-NoProfile", "-File", str(ROOT / "install.ps1"), "-SourceDir", str(source), "-Check"),
+                env=environment,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+            )
+        self.assertEqual(completed.returncode, 2)
+        self.assertIn("INSTALLER_INTEGRITY_MISMATCH", completed.stderr)
 
     def test_entrypoints_contain_no_tracing_or_fallback_installer(self) -> None:
         shell = (ROOT / "install.sh").read_text(encoding="utf-8")
@@ -219,6 +290,16 @@ class InstallContractTests(unittest.TestCase):
         self.assertNotRegex(shell, r"\beval\b")
         self.assertNotIn("Invoke-Expression", powershell)
         self.assertNotIn("intelligence-platform", shell + powershell)
+
+    def test_entrypoints_pin_coordinator_and_channel_content(self) -> None:
+        coordinator = hashlib.sha256((ROOT / "installer.py").read_bytes()).hexdigest()
+        rc_manifest = hashlib.sha256((ROOT / "channels/rc.json").read_bytes()).hexdigest()
+        stable_manifest = hashlib.sha256((ROOT / "channels/stable.json").read_bytes()).hexdigest()
+        shell = (ROOT / "install.sh").read_text(encoding="utf-8")
+        powershell = (ROOT / "install.ps1").read_text(encoding="utf-8")
+        for digest in (coordinator, rc_manifest, stable_manifest):
+            self.assertIn(digest, shell)
+            self.assertIn(digest, powershell)
 
 
 if __name__ == "__main__":

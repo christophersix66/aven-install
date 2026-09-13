@@ -4,7 +4,7 @@
 
 ## Trust boundaries
 
-- The public installer and selected channel manifest identify an exact private GitHub release.
+- The public entrypoints pin the coordinator and channel-file SHA-256 values. The coordinator independently pins every security-sensitive field of the exact approved private GitHub release.
 - GitHub CLI owns authentication and credential storage.
 - The installer separately verifies repository access, tag target, release posture, asset identity, size, GitHub digest when available, downloaded SHA-256, checksum-file binding, and build-report identity.
 - The downloaded bootstrap self-verifies again and owns component acquisition and machine installation.
@@ -14,7 +14,7 @@ Installer success is not Program Authority, Verification, Trust, host authentica
 
 ## Pipe-to-shell
 
-`curl | bash` and `irm | iex` optimize convenience. They execute content retrieved at that moment and should not be described as intrinsically trusted. For stronger review, clone this repository, select an exact commit, inspect the entrypoint, Python coordinator, and channel manifest, then execute locally.
+`curl | bash` and `irm | iex` optimize convenience. They execute the entrypoint retrieved at that moment and should not be described as intrinsically trusted. For stronger review, clone this repository, select an exact commit, inspect the entrypoint, Python coordinator, and channel manifest, then execute locally. Local execution uses those adjacent inspected files and verifies their content hashes before Python runs.
 
 ## Extraction protections
 
@@ -31,7 +31,7 @@ Regular files are copied into a newly created owned temporary directory rather t
 
 ## Commands and privilege
 
-External commands are invoked as argument arrays with `shell=False`; manifest fields cannot become shell fragments. Package-manager commands are selected from fixed command arrays. Missing prerequisite installation is shown before execution and requires explicit approval. No silent `sudo` or administrator elevation occurs.
+External commands are resolved once to absolute paths and invoked as argument arrays with `shell=False`; current-directory executables and manifest shell fragments are rejected. The installed Aven lifecycle is checked only through its conventional owned launcher. Package-manager commands are selected from fixed command arrays. Missing prerequisite installation is shown before execution and requires explicit approval. No silent `sudo` or administrator elevation occurs.
 
 The shell and PowerShell entrypoints do not enable trace logging and do not evaluate downloaded manifest values as code.
 
