@@ -1,0 +1,6 @@
+{
+  "channel": "stable",
+  "reason": "Aven stable 1.0.0 has not been released. Use the rc channel only when you intend to install the private release candidate.",
+  "schema": "aven-install.channel-unavailable.v1",
+  "status": "UNAVAILABLE"
+}

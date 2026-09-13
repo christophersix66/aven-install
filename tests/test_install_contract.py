@@ -1,0 +1,225 @@
+from __future__ import annotations
+
+import hashlib
+import io
+import json
+from pathlib import Path
+import subprocess
+import tarfile
+import tempfile
+import unittest
+from unittest import mock
+
+import installer
+
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def _completed(stdout: str = "", returncode: int = 0) -> subprocess.CompletedProcess[str]:
+    return subprocess.CompletedProcess([], returncode, stdout, "")
+
+
+class InstallContractTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.channel = dict(installer.load_channel(ROOT / "channels/rc.json", "rc"))
+
+    def _tar(self, path: Path, members: list[tuple[str, bytes, str]]) -> None:
+        with tarfile.open(path, "w") as archive:
+            for name, payload, kind in members:
+                info = tarfile.TarInfo(name)
+                if kind == "file":
+                    info.size = len(payload)
+                    archive.addfile(info, io.BytesIO(payload))
+                elif kind == "dir":
+                    info.type = tarfile.DIRTYPE
+                    archive.addfile(info)
+                elif kind == "symlink":
+                    info.type = tarfile.SYMTYPE
+                    info.linkname = "../../outside"
+                    archive.addfile(info)
+
+    def test_safe_extract_accepts_regular_bootstrap(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            archive = root / "fixture.tar"
+            destination = root / "output"
+            destination.mkdir()
+            self._tar(archive, [("aven-bootstrap", b"ok", "file"), ("lib/module.py", b"pass\n", "file")])
+            installer.safe_extract(archive, destination)
+            self.assertEqual((destination / "aven-bootstrap").read_bytes(), b"ok")
+            self.assertEqual((destination / "lib/module.py").read_bytes(), b"pass\n")
+
+    def test_safe_extract_rejects_traversal(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            archive = root / "fixture.tar"
+            destination = root / "output"
+            destination.mkdir()
+            self._tar(archive, [("../outside", b"bad", "file")])
+            with self.assertRaises(installer.InstallerError) as caught:
+                installer.safe_extract(archive, destination)
+            self.assertEqual(caught.exception.code, "ARCHIVE_UNSAFE")
+            self.assertFalse((root / "outside").exists())
+
+    def test_safe_extract_rejects_symlink(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            archive = root / "fixture.tar"
+            destination = root / "output"
+            destination.mkdir()
+            self._tar(archive, [("escape", b"", "symlink")])
+            with self.assertRaises(installer.InstallerError):
+                installer.safe_extract(archive, destination)
+
+    def test_safe_extract_rejects_case_collisions(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            archive = root / "fixture.tar"
+            destination = root / "output"
+            destination.mkdir()
+            self._tar(archive, [("File", b"one", "file"), ("file", b"two", "file")])
+            with self.assertRaises(installer.InstallerError):
+                installer.safe_extract(archive, destination)
+
+    def test_release_resolution_requires_exact_tag_and_assets(self) -> None:
+        release = {
+            "tag_name": self.channel["tag"],
+            "draft": False,
+            "prerelease": True,
+            "assets": [
+                {"name": self.channel["asset"], "size": self.channel["asset_size"], "digest": "sha256:" + self.channel["sha256"]},
+                {"name": self.channel["checksum_asset"], "size": 138},
+                {"name": self.channel["build_report_asset"], "size": 819},
+            ],
+        }
+        results = iter([
+            _completed(json.dumps({"object": {"type": "commit", "sha": self.channel["commit"]}})),
+            _completed(json.dumps(release)),
+        ])
+        with mock.patch("installer._run", side_effect=lambda *args, **kwargs: next(results)):
+            installer.resolve_release(self.channel)
+
+    def test_release_resolution_rejects_tag_rebound(self) -> None:
+        with mock.patch("installer._run", return_value=_completed(json.dumps({"object": {"type": "commit", "sha": "0" * 40}}))):
+            with self.assertRaises(installer.InstallerError) as caught:
+                installer.resolve_release(self.channel)
+        self.assertEqual(caught.exception.code, "RELEASE_TAG_MISMATCH")
+
+    def test_release_resolution_rejects_duplicate_assets(self) -> None:
+        asset = {
+            "name": self.channel["asset"],
+            "size": self.channel["asset_size"],
+            "state": "uploaded",
+            "digest": "sha256:" + self.channel["sha256"],
+        }
+        release = {
+            "tag_name": self.channel["tag"],
+            "draft": False,
+            "prerelease": True,
+            "assets": [asset, dict(asset)],
+        }
+        results = iter([
+            _completed(json.dumps({"object": {"type": "commit", "sha": self.channel["commit"]}})),
+            _completed(json.dumps(release)),
+        ])
+        with mock.patch("installer._run", side_effect=lambda *args, **kwargs: next(results)):
+            with self.assertRaises(installer.InstallerError) as caught:
+                installer.resolve_release(self.channel)
+        self.assertEqual(caught.exception.code, "RELEASE_ASSET_MISMATCH")
+
+    def test_download_verification_checks_digest_checksum_and_report(self) -> None:
+        payload = b"exact archive bytes"
+        channel = dict(self.channel)
+        channel["asset_size"] = len(payload)
+        channel["sha256"] = hashlib.sha256(payload).hexdigest()
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / channel["asset"]).write_bytes(payload)
+            (root / channel["checksum_asset"]).write_text(f"{channel['sha256']}  {channel['asset']}\n", encoding="utf-8")
+            report = {
+                "artifact": channel["asset"],
+                "artifact_sha256": channel["sha256"],
+                "source_commit": channel["commit"],
+                "installation_lock_sha256": channel["installation_lock_sha256"],
+                "contains_credentials": False,
+                "contains_component_repositories": False,
+            }
+            (root / channel["build_report_asset"]).write_text(json.dumps(report), encoding="utf-8")
+            self.assertEqual(installer.verify_download(channel, root), root / channel["asset"])
+            (root / channel["asset"]).write_bytes(b"tampered")
+            with self.assertRaises(installer.InstallerError) as caught:
+                installer.verify_download(channel, root)
+            self.assertEqual(caught.exception.code, "ARTIFACT_SHA256_MISMATCH")
+
+    def test_check_mode_performs_no_install_mutation(self) -> None:
+        stdout = io.StringIO()
+        with (
+            mock.patch("installer.platform_identity", return_value=("linux", "x86_64")),
+            mock.patch("installer.ensure_required_tools", return_value={"git": "git 2", "gh": "gh 2"}),
+            mock.patch("installer.ensure_github_access"),
+            mock.patch("installer.resolve_release"),
+            mock.patch("installer.inspect_existing_aven", return_value="NOT_INSTALLED"),
+            mock.patch("installer.download_release") as download,
+            mock.patch("sys.stdout", stdout),
+        ):
+            result = installer.main(["--manifest", str(ROOT / "channels/rc.json"), "--channel", "rc", "--check"])
+        self.assertEqual(result, 0)
+        self.assertIn("Mutations performed: 0", stdout.getvalue())
+        download.assert_not_called()
+
+    def test_apply_runs_plan_then_apply_and_health(self) -> None:
+        calls: list[str] = []
+        with tempfile.TemporaryDirectory() as temporary:
+            temp_root = Path(temporary)
+            archive = temp_root / "fixture.tar"
+            archive.write_bytes(b"fixture")
+            with (
+                mock.patch("installer.platform_identity", return_value=("macos", "arm64")),
+                mock.patch("installer.ensure_required_tools", return_value={"git": "git 2", "gh": "gh 2"}),
+                mock.patch("installer.ensure_github_access"),
+                mock.patch("installer.resolve_release"),
+                mock.patch("installer.inspect_existing_aven", return_value="NOT_INSTALLED"),
+                mock.patch("installer.download_release"),
+                mock.patch("installer.verify_download", return_value=archive),
+                mock.patch("installer.safe_extract", side_effect=lambda _a, destination: (destination / "aven-bootstrap").write_text("bootstrap")),
+                mock.patch("installer._invoke_bootstrap", side_effect=lambda _p, _b, action, inherit: calls.append(action)),
+                mock.patch("installer.post_install_health", return_value=Path.home() / ".local/bin/aven"),
+                mock.patch.dict("os.environ", {"AVEN_INSTALL_TMPDIR": temporary}, clear=False),
+            ):
+                result = installer.main(["--manifest", str(ROOT / "channels/rc.json"), "--channel", "rc", "--non-interactive", "--yes"])
+        self.assertEqual(result, 0)
+        self.assertEqual(calls, ["--plan", "--apply"])
+
+    def test_noninteractive_apply_requires_explicit_yes(self) -> None:
+        with (
+            mock.patch("installer.platform_identity", return_value=("windows", "x86_64")),
+            mock.patch("installer.ensure_required_tools", return_value={"git": "git 2", "gh": "gh 2"}),
+            mock.patch("installer.ensure_github_access"),
+            mock.patch("installer.resolve_release"),
+            mock.patch("installer.inspect_existing_aven", return_value="NOT_INSTALLED"),
+        ):
+            result = installer.main(["--manifest", str(ROOT / "channels/rc.json"), "--channel", "rc", "--non-interactive"])
+        self.assertEqual(result, 2)
+
+    def test_no_subprocess_uses_shell(self) -> None:
+        with mock.patch("subprocess.run", return_value=_completed()) as run:
+            installer._run(("gh", "auth", "status"))
+        self.assertIs(run.call_args.kwargs["shell"], False)
+
+    def test_package_manager_commands_are_fixed_argument_arrays(self) -> None:
+        with mock.patch("installer.shutil.which", side_effect=lambda item: "/usr/bin/apt-get" if item == "apt-get" else None), mock.patch("installer._sudo_prefix", return_value=["sudo"]):
+            commands = installer.prerequisite_install_commands("linux", ["git", "gh"])
+        self.assertEqual(commands, [["sudo", "apt-get", "install", "-y", "git", "gh"]])
+
+    def test_entrypoints_contain_no_tracing_or_fallback_installer(self) -> None:
+        shell = (ROOT / "install.sh").read_text(encoding="utf-8")
+        powershell = (ROOT / "install.ps1").read_text(encoding="utf-8")
+        self.assertNotIn("set -x", shell)
+        self.assertNotRegex(shell, r"\beval\b")
+        self.assertNotIn("Invoke-Expression", powershell)
+        self.assertNotIn("intelligence-platform", shell + powershell)
+
+
+if __name__ == "__main__":
+    unittest.main()
