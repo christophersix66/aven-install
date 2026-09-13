@@ -1,0 +1,7 @@
+installer.py text eol=lf
+channels/*.json text eol=lf
+install.sh text eol=lf
+install.ps1 text eol=lf
+*.md text eol=lf
+tests/*.py text eol=lf
+*.yml text eol=lf
