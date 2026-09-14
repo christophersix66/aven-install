@@ -14,7 +14,7 @@ curl -fsSL https://raw.githubusercontent.com/christophersix66/aven-install/main/
 irm https://raw.githubusercontent.com/christophersix66/aven-install/main/install.ps1 | iex
 ```
 
-The current default channel is explicitly `rc`: Aven `1.0.0-rc.1`. Stable `1.0.0` does not exist and is not silently substituted.
+The current default channel is explicitly `rc`: Aven `1.0.0-rc.2`. Stable `1.0.0` does not exist and is not silently substituted.
 
 ## What the installer does
 
@@ -40,7 +40,7 @@ The installer does not acquire or arrange the seven components itself. It stops 
 - [GitHub CLI](https://cli.github.com/)
 - GitHub read access to `christophersix66/intelligence-workbench`
 
-Codex, Claude, PostgreSQL, and ElevenLabs are optional for base installation. The installer does not install host credentials or handle ElevenLabs secrets.
+Codex, Claude, Ollama, LM Studio, OpenCode, PostgreSQL, ElevenLabs, and local models are optional for base installation. The installer does not install model hosts, download models, configure hosted-provider keys, install host credentials, or handle ElevenLabs secrets.
 
 Recognized prerequisite package managers are Homebrew, winget, apt, dnf, and pacman. Every package mutation is displayed and requires explicit approval. The installer never silently invokes `sudo` or administrator elevation.
 
@@ -71,7 +71,7 @@ less install.sh installer.py channels/rc.json
 ./install.sh --channel rc
 ```
 
-When run from a checkout, the entrypoint automatically uses the adjacent coordinator and channel files and verifies their compiled SHA-256 values. For a reproducible review, check out the exact installer commit accepted by your organization before inspection. The coordinator also fails closed unless the channel is the exact approved private Aven `v1.0.0-rc.1` identity and its tag, source commit, release posture, asset identity, and SHA-256 all match.
+When run from a checkout, the entrypoint automatically uses the adjacent coordinator and channel files and verifies their compiled SHA-256 values. For a reproducible review, check out the exact installer commit accepted by your organization before inspection. The coordinator also fails closed unless the channel is the exact approved private Aven `v1.0.0-rc.2` identity and its tag, source commit, release posture, asset identity, and SHA-256 all match.
 
 ## Non-interactive use
 

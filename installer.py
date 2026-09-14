@@ -26,17 +26,17 @@ MINIMUM_TOOL_VERSIONS = {"git": (2, 20, 0), "gh": (2, 0, 0)}
 APPROVED_RC = {
     "schema": CHANNEL_SCHEMA,
     "channel": "rc",
-    "version": "1.0.0-rc.1",
+    "version": "1.0.0-rc.2",
     "repository": EXPECTED_REPOSITORY,
-    "tag": "v1.0.0-rc.1",
-    "commit": "b66e56796c9bbb4879921d5c77fb9b8dfaa0e3da",
-    "asset": "aven-v1.0.0-rc.1-bootstrap-b66e56796c9bbb4879921d5c77fb9b8dfaa0e3da.tar",
-    "asset_size": 204800,
-    "sha256": "4c6a32d8ac727513e48dcce114631aacc74fb3963180181578a7f0f5bb6fb8d9",
-    "checksum_asset": "aven-v1.0.0-rc.1-bootstrap-b66e56796c9bbb4879921d5c77fb9b8dfaa0e3da.tar.sha256",
-    "build_report_asset": "aven-v1.0.0-rc.1-bootstrap-b66e56796c9bbb4879921d5c77fb9b8dfaa0e3da.build.json",
-    "installation_lock_sha256": "60ac2dcd2795859fdaab8a49aa0de03243eeebfbf0a962cf9a5692b4b46a6887",
-    "workbench_runtime_commit": "d78826ec5068e64e6d16bb590388167653b6e0ca",
+    "tag": "v1.0.0-rc.2",
+    "commit": "0c9b9b62d82a42c5bca19b6cfdca99f51734a1aa",
+    "asset": "aven-v1.0.0-rc.2-bootstrap-0c9b9b62d82a.tar",
+    "asset_size": 256000,
+    "sha256": "0c57109a02811817fbefddf95bf989892ecda9673fccdb68cf1b84dfca843582",
+    "checksum_asset": "aven-v1.0.0-rc.2-bootstrap-0c9b9b62d82a.tar.sha256",
+    "build_report_asset": "aven-v1.0.0-rc.2-bootstrap-0c9b9b62d82a.build.json",
+    "installation_lock_sha256": "a0a79f169b3d3e632271cf4dd9a9223f75d6c04f5144e583fa24f2dbcf87a3ca",
+    "workbench_runtime_commit": "f802a1adb49cbdf3fffe7798a38dc1971644852b",
     "prerelease": True,
 }
 MAX_MANIFEST_BYTES = 16_384
@@ -122,7 +122,7 @@ def load_channel(path: Path, requested_channel: str) -> Mapping[str, Any]:
         raise InstallerError("RELEASE_MANIFEST_INVALID", "invalid asset size")
     if type(value.get("prerelease")) is not bool:
         raise InstallerError("RELEASE_MANIFEST_INVALID", "invalid release posture")
-    expected_asset = f"aven-v{value['version']}-bootstrap-{value['commit']}.tar"
+    expected_asset = f"aven-v{value['version']}-bootstrap-{value['commit'][:12]}.tar"
     if value["tag"] != f"v{value['version']}" or value["asset"] != expected_asset:
         raise InstallerError("RELEASE_MANIFEST_INVALID", "version, tag, commit, and asset are not exactly bound")
     if value["checksum_asset"] != f"{expected_asset}.sha256":
@@ -132,7 +132,7 @@ def load_channel(path: Path, requested_channel: str) -> Mapping[str, Any]:
     if value != APPROVED_RC:
         raise InstallerError(
             "RELEASE_IDENTITY_NOT_APPROVED",
-            "the rc channel does not match the exact owner-approved Aven v1.0.0-rc.1 release",
+            "the rc channel does not match the exact owner-approved Aven v1.0.0-rc.2 release",
         )
     return value
 

@@ -91,8 +91,8 @@ class InstallContractTests(unittest.TestCase):
             "prerelease": True,
             "assets": [
                 {"name": self.channel["asset"], "size": self.channel["asset_size"], "digest": "sha256:" + self.channel["sha256"]},
-                {"name": self.channel["checksum_asset"], "size": 138},
-                {"name": self.channel["build_report_asset"], "size": 819},
+                {"name": self.channel["checksum_asset"], "size": 110},
+                {"name": self.channel["build_report_asset"], "size": 1902},
             ],
         }
         results = iter([
