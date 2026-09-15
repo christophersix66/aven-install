@@ -39,6 +39,13 @@ APPROVED_RC = {
     "workbench_runtime_commit": "40c771c850dccac6a3db3e9b8a98badfaeca549d",
     "prerelease": True,
 }
+APPROVED_UPGRADE_FROM_RC5 = {
+    "aven_version": "1.0.0-rc.5",
+    "installation_lock_sha256": "019661a4574418b591f358f7bde3b594de2d5a2e7541e9f6d15e47c52e09db1f",
+    "workbench_commit": "1686017f25d93e2e81efa6bd8877b0e31e0727d1",
+    "bootstrap_source_commit": "9abf024c6452cbbc9eba66a8a4282cf9592c8330",
+    "bootstrap_manifest_sha256": "8e39e9e9562cd471b8d7d52ddab76f7126314f020915544b6539c28b97ad7c35",
+}
 MAX_MANIFEST_BYTES = 16_384
 MAX_RELEASE_JSON_BYTES = 2_000_000
 MAX_ARCHIVE_MEMBERS = 128
@@ -398,7 +405,21 @@ def inspect_existing_aven(system: str, channel: Mapping[str, Any]) -> str:
         and value.get("installation_lock_sha256") == channel["installation_lock_sha256"]
         and value.get("workbench_commit") == channel["workbench_runtime_commit"]
     )
-    if not same:
+    distribution = value.get("distribution")
+    approved_predecessor = (
+        value.get("status") == "INSTALLED"
+        and value.get("aven_version") == APPROVED_UPGRADE_FROM_RC5["aven_version"]
+        and value.get("installation_lock_sha256")
+        == APPROVED_UPGRADE_FROM_RC5["installation_lock_sha256"]
+        and value.get("workbench_commit")
+        == APPROVED_UPGRADE_FROM_RC5["workbench_commit"]
+        and isinstance(distribution, dict)
+        and distribution.get("bootstrap_source_commit")
+        == APPROVED_UPGRADE_FROM_RC5["bootstrap_source_commit"]
+        and distribution.get("bootstrap_manifest_sha256")
+        == APPROVED_UPGRADE_FROM_RC5["bootstrap_manifest_sha256"]
+    )
+    if not same and not approved_predecessor:
         raise InstallerError("AVEN_DIFFERENT_INSTALLATION", "a different Aven version or lock is installed; use Aven lifecycle commands explicitly")
     status = _run((command, "--json", "status"), timeout=60)
     if status.returncode != 0:
@@ -406,7 +427,7 @@ def inspect_existing_aven(system: str, channel: Mapping[str, Any]) -> str:
     status_value = _load_json(status.stdout.encode(), code="AVEN_EXISTING_UNREADABLE", limit=MAX_RELEASE_JSON_BYTES)
     if status_value.get("status") != "HEALTHY":
         raise InstallerError("AVEN_REPAIR_REQUIRED", "the exact installed Aven version requires repair")
-    return "ALREADY_INSTALLED"
+    return "ALREADY_INSTALLED" if same else "APPROVED_PREDECESSOR_RC5"
 
 
 def download_release(gh: str, channel: Mapping[str, Any], destination: Path) -> None:
@@ -570,8 +591,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             print("Aven: ALREADY INSTALLED — exact release and lock are healthy")
             return 0
         if arguments.check:
-            print("Aven: NOT_INSTALLED")
-            print("Ready to install: YES")
+            if existing == "APPROVED_PREDECESSOR_RC5":
+                print("Aven: APPROVED RC.5 PREDECESSOR — exact RC.6 upgrade is available")
+                print("Ready to upgrade: YES")
+            else:
+                print("Aven: NOT_INSTALLED")
+                print("Ready to install: YES")
             print("Mutations performed: 0")
             return 0
         if arguments.non_interactive and not arguments.yes:
