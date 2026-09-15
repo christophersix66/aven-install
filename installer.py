@@ -178,8 +178,9 @@ def _run_gh(
     *,
     timeout: int,
     inherit: bool = False,
+    env: Mapping[str, str] | None = None,
 ) -> subprocess.CompletedProcess[str]:
-    environment = os.environ.copy()
+    environment = dict(os.environ if env is None else env)
     environment["GH_TELEMETRY"] = "0"
     environment["GH_NO_UPDATE_NOTIFIER"] = "1"
     environment["GH_NO_EXTENSION_UPDATE_NOTIFIER"] = "1"
@@ -523,8 +524,61 @@ def safe_extract(archive: Path, destination: Path) -> None:
         raise InstallerError("ARCHIVE_UNSAFE", "archive could not be safely extracted") from error
 
 
-def _invoke_bootstrap(python: str, bootstrap: Path, action: str, *, inherit: bool) -> None:
-    completed = _run((python, str(bootstrap), "setup", action), timeout=1800, inherit=inherit, cwd=bootstrap.parent)
+def _bootstrap_git_environment(gh: str, directory: Path) -> Mapping[str, str]:
+    git_config = directory / "gitconfig"
+    git_config.write_bytes(b"")
+    if os.name != "nt":
+        git_config.chmod(0o600)
+    environment = os.environ.copy()
+    environment["GIT_CONFIG_GLOBAL"] = str(git_config)
+    configured = _run_gh(
+        gh,
+        ("auth", "setup-git", "--hostname", "github.com"),
+        timeout=30,
+        env=environment,
+    )
+    if configured.returncode != 0:
+        raise InstallerError(
+            "GITHUB_GIT_CREDENTIAL_SETUP_FAILED",
+            "GitHub CLI could not configure the transient Git credential helper",
+        )
+    return environment
+
+
+def _ensure_git_repository_access(
+    git: str,
+    channel: Mapping[str, Any],
+    *,
+    env: Mapping[str, str],
+) -> None:
+    completed = _run(
+        (git, "ls-remote", "--exit-code", f"https://github.com/{channel['repository']}.git", "HEAD"),
+        timeout=60,
+        cwd=Path.home(),
+        env=env,
+    )
+    if completed.returncode != 0:
+        raise InstallerError(
+            "GITHUB_GIT_REPOSITORY_ACCESS_DENIED",
+            "the transient Git credential path cannot read the approved private repository",
+        )
+
+
+def _invoke_bootstrap(
+    python: str,
+    bootstrap: Path,
+    action: str,
+    *,
+    inherit: bool,
+    env: Mapping[str, str] | None = None,
+) -> None:
+    completed = _run(
+        (python, str(bootstrap), "setup", action),
+        timeout=1800,
+        inherit=inherit,
+        cwd=bootstrap.parent,
+        env=env,
+    )
     if completed.returncode != 0:
         code = "AVEN_SETUP_PLAN_FAILED" if action == "--plan" else "AVEN_SETUP_APPLY_FAILED"
         raise InstallerError(code, f"Aven bootstrap setup {action} did not succeed")
@@ -638,11 +692,23 @@ def main(argv: Sequence[str] | None = None) -> int:
             bootstrap = extracted / "aven-bootstrap"
             if not bootstrap.is_file() or bootstrap.is_symlink():
                 raise InstallerError("ARCHIVE_UNSAFE", "verified archive did not contain the bootstrap entrypoint")
+            bootstrap_environment = _bootstrap_git_environment(tools["gh"]["path"], root)
+            _ensure_git_repository_access(
+                tools["git"]["path"],
+                channel,
+                env=bootstrap_environment,
+            )
             upgrading = existing == "APPROVED_PREDECESSOR_RC5"
             if upgrading:
                 _invoke_predecessor_uninstall(system, "--plan", inherit=True)
             else:
-                _invoke_bootstrap(sys.executable, bootstrap, "--plan", inherit=True)
+                _invoke_bootstrap(
+                    sys.executable,
+                    bootstrap,
+                    "--plan",
+                    inherit=True,
+                    env=bootstrap_environment,
+                )
             question = "Upgrade Aven from exact RC.5 to RC.6 now?" if upgrading else "Install Aven now?"
             if not _prompt(question, assume_yes=arguments.yes, non_interactive=arguments.non_interactive):
                 print("Installation cancelled after the zero-effect Aven setup plan.")
@@ -654,8 +720,20 @@ def main(argv: Sequence[str] | None = None) -> int:
                         "the installed Aven RC.5 predecessor changed after planning",
                     )
                 _invoke_predecessor_uninstall(system, "--apply", inherit=True)
-                _invoke_bootstrap(sys.executable, bootstrap, "--plan", inherit=True)
-            _invoke_bootstrap(sys.executable, bootstrap, "--apply", inherit=True)
+                _invoke_bootstrap(
+                    sys.executable,
+                    bootstrap,
+                    "--plan",
+                    inherit=True,
+                    env=bootstrap_environment,
+                )
+            _invoke_bootstrap(
+                sys.executable,
+                bootstrap,
+                "--apply",
+                inherit=True,
+                env=bootstrap_environment,
+            )
 
         launcher = post_install_health(system, channel)
         print()

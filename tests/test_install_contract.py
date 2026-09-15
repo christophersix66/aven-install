@@ -236,7 +236,9 @@ class InstallContractTests(unittest.TestCase):
                 mock.patch("installer.download_release"),
                 mock.patch("installer.verify_download", return_value=archive),
                 mock.patch("installer.safe_extract", side_effect=lambda _a, destination: (destination / "aven-bootstrap").write_text("bootstrap")),
-                mock.patch("installer._invoke_bootstrap", side_effect=lambda _p, _b, action, inherit: calls.append(action)),
+                mock.patch("installer._bootstrap_git_environment", return_value={}),
+                mock.patch("installer._ensure_git_repository_access"),
+                mock.patch("installer._invoke_bootstrap", side_effect=lambda _p, _b, action, inherit, env: calls.append(action)),
                 mock.patch("installer.post_install_health", return_value=Path.home() / ".local/bin/aven"),
                 mock.patch.dict("os.environ", {"AVEN_INSTALL_TMPDIR": temporary}, clear=False),
             ):
@@ -260,8 +262,10 @@ class InstallContractTests(unittest.TestCase):
                 mock.patch("installer.download_release"),
                 mock.patch("installer.verify_download", return_value=archive),
                 mock.patch("installer.safe_extract", side_effect=lambda _a, destination: (destination / "aven-bootstrap").write_text("bootstrap")),
+                mock.patch("installer._bootstrap_git_environment", return_value={}),
+                mock.patch("installer._ensure_git_repository_access"),
                 mock.patch("installer._invoke_predecessor_uninstall", side_effect=lambda _s, action, inherit: calls.append(f"uninstall:{action}")),
-                mock.patch("installer._invoke_bootstrap", side_effect=lambda _p, _b, action, inherit: calls.append(f"setup:{action}")),
+                mock.patch("installer._invoke_bootstrap", side_effect=lambda _p, _b, action, inherit, env: calls.append(f"setup:{action}")),
                 mock.patch("installer.post_install_health", return_value=Path.home() / ".local/bin/aven"),
                 mock.patch.dict("os.environ", {"AVEN_INSTALL_TMPDIR": temporary}, clear=False),
             ):
@@ -283,6 +287,34 @@ class InstallContractTests(unittest.TestCase):
                 installer._invoke_predecessor_uninstall("linux", "--plan", inherit=False)
         self.assertEqual(run.call_args.args[0], (str(launcher), "uninstall", "--plan"))
         self.assertEqual(run.call_args.kwargs["cwd"], Path.home())
+
+    def test_bootstrap_git_credentials_are_transient_and_access_is_preflighted(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            with mock.patch("installer._run_gh", return_value=_completed()) as run_gh:
+                environment = installer._bootstrap_git_environment("/usr/bin/gh", root)
+            config = root / "gitconfig"
+            self.assertEqual(environment["GIT_CONFIG_GLOBAL"], str(config))
+            self.assertTrue(config.is_file())
+            self.assertEqual(
+                run_gh.call_args.args,
+                ("/usr/bin/gh", ("auth", "setup-git", "--hostname", "github.com")),
+            )
+            with mock.patch("installer._run", return_value=_completed()) as run:
+                installer._ensure_git_repository_access(
+                    "/usr/bin/git", self.channel, env=environment
+                )
+        self.assertEqual(
+            run.call_args.args[0],
+            (
+                "/usr/bin/git",
+                "ls-remote",
+                "--exit-code",
+                "https://github.com/christophersix66/intelligence-workbench.git",
+                "HEAD",
+            ),
+        )
+        self.assertEqual(run.call_args.kwargs["env"], environment)
 
     def test_noninteractive_apply_requires_explicit_yes(self) -> None:
         with (
