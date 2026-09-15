@@ -530,6 +530,28 @@ def _invoke_bootstrap(python: str, bootstrap: Path, action: str, *, inherit: boo
         raise InstallerError(code, f"Aven bootstrap setup {action} did not succeed")
 
 
+def _invoke_predecessor_uninstall(system: str, action: str, *, inherit: bool) -> None:
+    command = _conventional_aven(system)
+    if not command.is_file():
+        raise InstallerError(
+            "AVEN_UPGRADE_PREDECESSOR_MISSING",
+            "the exact approved Aven RC.5 predecessor is no longer available",
+        )
+    completed = _run(
+        (str(command), "uninstall", action),
+        timeout=600,
+        inherit=inherit,
+        cwd=Path.home(),
+    )
+    if completed.returncode != 0:
+        code = (
+            "AVEN_UPGRADE_UNINSTALL_PLAN_FAILED"
+            if action == "--plan"
+            else "AVEN_UPGRADE_UNINSTALL_APPLY_FAILED"
+        )
+        raise InstallerError(code, f"the exact Aven RC.5 uninstall {action} did not succeed")
+
+
 def post_install_health(system: str, channel: Mapping[str, Any]) -> Path:
     expected = _conventional_aven(system)
     if not expected.is_file():
@@ -616,10 +638,23 @@ def main(argv: Sequence[str] | None = None) -> int:
             bootstrap = extracted / "aven-bootstrap"
             if not bootstrap.is_file() or bootstrap.is_symlink():
                 raise InstallerError("ARCHIVE_UNSAFE", "verified archive did not contain the bootstrap entrypoint")
-            _invoke_bootstrap(sys.executable, bootstrap, "--plan", inherit=True)
-            if not _prompt("Install Aven now?", assume_yes=arguments.yes, non_interactive=arguments.non_interactive):
+            upgrading = existing == "APPROVED_PREDECESSOR_RC5"
+            if upgrading:
+                _invoke_predecessor_uninstall(system, "--plan", inherit=True)
+            else:
+                _invoke_bootstrap(sys.executable, bootstrap, "--plan", inherit=True)
+            question = "Upgrade Aven from exact RC.5 to RC.6 now?" if upgrading else "Install Aven now?"
+            if not _prompt(question, assume_yes=arguments.yes, non_interactive=arguments.non_interactive):
                 print("Installation cancelled after the zero-effect Aven setup plan.")
                 return 0
+            if upgrading:
+                if inspect_existing_aven(system, channel) != "APPROVED_PREDECESSOR_RC5":
+                    raise InstallerError(
+                        "AVEN_UPGRADE_PREDECESSOR_CHANGED",
+                        "the installed Aven RC.5 predecessor changed after planning",
+                    )
+                _invoke_predecessor_uninstall(system, "--apply", inherit=True)
+                _invoke_bootstrap(sys.executable, bootstrap, "--plan", inherit=True)
             _invoke_bootstrap(sys.executable, bootstrap, "--apply", inherit=True)
 
         launcher = post_install_health(system, channel)

@@ -244,6 +244,46 @@ class InstallContractTests(unittest.TestCase):
         self.assertEqual(result, 0)
         self.assertEqual(calls, ["--plan", "--apply"])
 
+    def test_exact_rc5_upgrade_uses_owned_uninstall_then_rc6_setup(self) -> None:
+        calls: list[str] = []
+        with tempfile.TemporaryDirectory() as temporary:
+            temp_root = Path(temporary)
+            archive = temp_root / "fixture.tar"
+            archive.write_bytes(b"fixture")
+            existing = iter(["APPROVED_PREDECESSOR_RC5", "APPROVED_PREDECESSOR_RC5"])
+            with (
+                mock.patch("installer.platform_identity", return_value=("linux", "x86_64")),
+                mock.patch("installer.ensure_required_tools", return_value={"git": {"path": "/usr/bin/git", "version": "git version 2.40.0"}, "gh": {"path": "/usr/bin/gh", "version": "gh version 2.40.0"}}),
+                mock.patch("installer.ensure_github_access"),
+                mock.patch("installer.resolve_release"),
+                mock.patch("installer.inspect_existing_aven", side_effect=lambda *_args: next(existing)),
+                mock.patch("installer.download_release"),
+                mock.patch("installer.verify_download", return_value=archive),
+                mock.patch("installer.safe_extract", side_effect=lambda _a, destination: (destination / "aven-bootstrap").write_text("bootstrap")),
+                mock.patch("installer._invoke_predecessor_uninstall", side_effect=lambda _s, action, inherit: calls.append(f"uninstall:{action}")),
+                mock.patch("installer._invoke_bootstrap", side_effect=lambda _p, _b, action, inherit: calls.append(f"setup:{action}")),
+                mock.patch("installer.post_install_health", return_value=Path.home() / ".local/bin/aven"),
+                mock.patch.dict("os.environ", {"AVEN_INSTALL_TMPDIR": temporary}, clear=False),
+            ):
+                result = installer.main(["--manifest", str(ROOT / "channels/rc.json"), "--channel", "rc", "--non-interactive", "--yes"])
+        self.assertEqual(result, 0)
+        self.assertEqual(
+            calls,
+            ["uninstall:--plan", "uninstall:--apply", "setup:--plan", "setup:--apply"],
+        )
+
+    def test_predecessor_uninstall_uses_only_conventional_owned_launcher(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            launcher = Path(temporary) / "aven"
+            launcher.write_text("fixture", encoding="utf-8")
+            with (
+                mock.patch("installer._conventional_aven", return_value=launcher),
+                mock.patch("installer._run", return_value=_completed()) as run,
+            ):
+                installer._invoke_predecessor_uninstall("linux", "--plan", inherit=False)
+        self.assertEqual(run.call_args.args[0], (str(launcher), "uninstall", "--plan"))
+        self.assertEqual(run.call_args.kwargs["cwd"], Path.home())
+
     def test_noninteractive_apply_requires_explicit_yes(self) -> None:
         with (
             mock.patch("installer.platform_identity", return_value=("windows", "x86_64")),
