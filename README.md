@@ -71,7 +71,7 @@ less install.sh installer.py channels/rc.json
 ./install.sh --channel rc
 ```
 
-When run from a checkout, the entrypoint automatically uses the adjacent coordinator and channel files and verifies their compiled SHA-256 values. For a reproducible review, check out the exact installer commit accepted by your organization before inspection. The coordinator also fails closed unless the channel is the exact approved private Aven `v1.0.0-rc.4` identity and its tag, source commit, release posture, asset identity, and SHA-256 all match.
+When run from a checkout, the entrypoint automatically uses the adjacent coordinator and channel files and verifies their compiled SHA-256 values. For a reproducible review, check out the exact installer commit accepted by your organization before inspection. The coordinator also fails closed unless the channel is the exact approved private Aven `v1.0.0-rc.5` identity and its tag, source commit, release posture, asset identity, and SHA-256 all match.
 
 ## Non-interactive use
 
