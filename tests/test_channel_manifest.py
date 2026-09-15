@@ -15,15 +15,15 @@ ROOT = Path(__file__).resolve().parents[1]
 class ChannelManifestTests(unittest.TestCase):
     def test_rc_channel_is_exact(self) -> None:
         value = installer.load_channel(ROOT / "channels/rc.json", "rc")
-        self.assertEqual(value["version"], "1.0.0-rc.6")
-        self.assertEqual(value["tag"], "v1.0.0-rc.6")
+        self.assertEqual(value["version"], "1.0.0-rc.7")
+        self.assertEqual(value["tag"], "v1.0.0-rc.7")
         self.assertEqual(
             value["commit"],
-            "a73ccf65f160ba545a1def31fd7aed9691ab0cac",
+            "810ecb8629d16ed1816f7547f7e8fc47b5662893",
         )
         self.assertEqual(
             value["sha256"],
-            "701653c2fe2ae503b87028e14fba00f1c651486ae9bd20e9b2068650cde2e445",
+            "00d26efe02e8684870bea3d3bfe5674b1d4a7b4647f39d7a9d2937546f40dcc0",
         )
         self.assertTrue(value["prerelease"])
 
@@ -48,7 +48,7 @@ class ChannelManifestTests(unittest.TestCase):
 
     def test_manifest_rejects_command_injection_token(self) -> None:
         value = json.loads((ROOT / "channels/rc.json").read_text())
-        value["tag"] = "v1.0.0-rc.6; touch owned"
+        value["tag"] = "v1.0.0-rc.7; touch owned"
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "channel.json"
             path.write_text(json.dumps(value), encoding="utf-8")
@@ -65,22 +65,22 @@ class ChannelManifestTests(unittest.TestCase):
                 installer.load_channel(path, "rc")
         self.assertEqual(caught.exception.code, "RELEASE_IDENTITY_NOT_APPROVED")
 
-    def test_old_rc5_identity_is_no_longer_approved(self) -> None:
+    def test_old_rc6_identity_is_no_longer_approved(self) -> None:
         value = {
-            "asset": "aven-v1.0.0-rc.5-bootstrap-9abf024c6452.tar",
+            "asset": "aven-v1.0.0-rc.6-bootstrap-a73ccf65f160.tar",
             "asset_size": 317440,
-            "build_report_asset": "aven-v1.0.0-rc.5-bootstrap-9abf024c6452.build.json",
+            "build_report_asset": "aven-v1.0.0-rc.6-bootstrap-a73ccf65f160.build.json",
             "channel": "rc",
-            "checksum_asset": "aven-v1.0.0-rc.5-bootstrap-9abf024c6452.tar.sha256",
-            "commit": "9abf024c6452cbbc9eba66a8a4282cf9592c8330",
-            "installation_lock_sha256": "019661a4574418b591f358f7bde3b594de2d5a2e7541e9f6d15e47c52e09db1f",
+            "checksum_asset": "aven-v1.0.0-rc.6-bootstrap-a73ccf65f160.tar.sha256",
+            "commit": "a73ccf65f160ba545a1def31fd7aed9691ab0cac",
+            "installation_lock_sha256": "1a23ab08771986475cb8d287ad0da03edcaf9d26dc336c4885b54b1a8e690026",
             "prerelease": True,
             "repository": "christophersix66/intelligence-workbench",
             "schema": "aven-install.channel.v1",
-            "sha256": "34ea8d040472643b7e58c138e1abcb5aeb043a66d25f5d78b0361b4cfd1b340d",
-            "tag": "v1.0.0-rc.5",
-            "version": "1.0.0-rc.5",
-            "workbench_runtime_commit": "1686017f25d93e2e81efa6bd8877b0e31e0727d1",
+            "sha256": "701653c2fe2ae503b87028e14fba00f1c651486ae9bd20e9b2068650cde2e445",
+            "tag": "v1.0.0-rc.6",
+            "version": "1.0.0-rc.6",
+            "workbench_runtime_commit": "40c771c850dccac6a3db3e9b8a98badfaeca549d",
         }
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "channel.json"
