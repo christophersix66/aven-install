@@ -320,6 +320,10 @@ class InstallContractTests(unittest.TestCase):
                 environment = installer._bootstrap_git_environment("/usr/bin/gh", root)
             config = root / "gitconfig"
             self.assertEqual(environment["GIT_CONFIG_GLOBAL"], str(config))
+            self.assertEqual(
+                environment["AVEN_BOOTSTRAP_INSTALL_CHANNEL"],
+                "PRIVATE_RELEASE_CANDIDATE",
+            )
             self.assertTrue(config.is_file())
             self.assertEqual(
                 run_gh.call_args.args,

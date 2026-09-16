@@ -548,6 +548,7 @@ def _bootstrap_git_environment(gh: str, directory: Path) -> Mapping[str, str]:
         git_config.chmod(0o600)
     environment = os.environ.copy()
     environment["GIT_CONFIG_GLOBAL"] = str(git_config)
+    environment["AVEN_BOOTSTRAP_INSTALL_CHANNEL"] = "PRIVATE_RELEASE_CANDIDATE"
     configured = _run_gh(
         gh,
         ("auth", "setup-git", "--hostname", "github.com"),
