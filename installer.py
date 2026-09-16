@@ -26,25 +26,25 @@ MINIMUM_TOOL_VERSIONS = {"git": (2, 20, 0), "gh": (2, 0, 0)}
 APPROVED_RC = {
     "schema": CHANNEL_SCHEMA,
     "channel": "rc",
-    "version": "1.0.0-rc.7",
+    "version": "1.0.0-rc.8",
     "repository": EXPECTED_REPOSITORY,
-    "tag": "v1.0.0-rc.7",
-    "commit": "810ecb8629d16ed1816f7547f7e8fc47b5662893",
-    "asset": "aven-v1.0.0-rc.7-bootstrap-810ecb8629d1.tar",
-    "asset_size": 327680,
-    "sha256": "00d26efe02e8684870bea3d3bfe5674b1d4a7b4647f39d7a9d2937546f40dcc0",
-    "checksum_asset": "aven-v1.0.0-rc.7-bootstrap-810ecb8629d1.tar.sha256",
-    "build_report_asset": "aven-v1.0.0-rc.7-bootstrap-810ecb8629d1.build.json",
-    "installation_lock_sha256": "3cddcb39edbe60eace7db03a40dcd77f5ea3a2088c6c262ef332d593f4fe1d97",
-    "workbench_runtime_commit": "6a6731d8bc92382004166602f50d0e000a6fd577",
+    "tag": "v1.0.0-rc.8",
+    "commit": "3f9f37a9f6eb0d5a0882938706ae2ff2e8d0c2c7",
+    "asset": "aven-v1.0.0-rc.8-bootstrap-3f9f37a9f6eb.tar",
+    "asset_size": 348160,
+    "sha256": "ac0e342124bd7a85cbd89d9b8e54c2cfa2cc982211bed8cc6d8f9fd3fdd98259",
+    "checksum_asset": "aven-v1.0.0-rc.8-bootstrap-3f9f37a9f6eb.tar.sha256",
+    "build_report_asset": "aven-v1.0.0-rc.8-bootstrap-3f9f37a9f6eb.build.json",
+    "installation_lock_sha256": "6430a3fcbdd257b8a019528234e824f010c01110d0ec9cc3bd7458cf4236da11",
+    "workbench_runtime_commit": "f54059df27ad2138a8ad33a8f616b2ae1dc94539",
     "prerelease": True,
 }
-APPROVED_UPGRADE_FROM_RC6 = {
-    "aven_version": "1.0.0-rc.6",
-    "installation_lock_sha256": "1a23ab08771986475cb8d287ad0da03edcaf9d26dc336c4885b54b1a8e690026",
-    "workbench_commit": "40c771c850dccac6a3db3e9b8a98badfaeca549d",
-    "bootstrap_source_commit": "a73ccf65f160ba545a1def31fd7aed9691ab0cac",
-    "bootstrap_manifest_sha256": "377c24bbc499f41d858b25803dde87f3cfa63b381ac6bf4354cc7c9bf9e8d03b",
+APPROVED_UPGRADE_FROM_RC7 = {
+    "aven_version": "1.0.0-rc.7",
+    "installation_lock_sha256": "3cddcb39edbe60eace7db03a40dcd77f5ea3a2088c6c262ef332d593f4fe1d97",
+    "workbench_commit": "6a6731d8bc92382004166602f50d0e000a6fd577",
+    "bootstrap_source_commit": "810ecb8629d16ed1816f7547f7e8fc47b5662893",
+    "bootstrap_manifest_sha256": "ca8cfe7a3ec0d02d0a8300bcca3760ff3ed66d2432863297f9c14ca544485f22",
 }
 MAX_MANIFEST_BYTES = 16_384
 MAX_RELEASE_JSON_BYTES = 2_000_000
@@ -139,7 +139,7 @@ def load_channel(path: Path, requested_channel: str) -> Mapping[str, Any]:
     if value != APPROVED_RC:
         raise InstallerError(
             "RELEASE_IDENTITY_NOT_APPROVED",
-            "the rc channel does not match the exact owner-approved Aven v1.0.0-rc.7 release",
+            "the rc channel does not match the exact owner-approved Aven v1.0.0-rc.8 release",
         )
     return value
 
@@ -350,6 +350,23 @@ def resolve_release(gh: str, channel: Mapping[str, Any]) -> Mapping[str, Any]:
         raise InstallerError("RELEASE_TAG_NOT_FOUND", "approved release tag is unavailable")
     tag_value = _load_json(tag_result.stdout.encode(), code="RELEASE_TAG_MISMATCH", limit=MAX_RELEASE_JSON_BYTES)
     target = tag_value.get("object")
+    if isinstance(target, dict) and target.get("type") == "tag":
+        tag_object_sha = target.get("sha")
+        if not isinstance(tag_object_sha, str) or HEX40.fullmatch(tag_object_sha) is None:
+            raise InstallerError("RELEASE_TAG_MISMATCH", "annotated release tag identity is invalid")
+        annotated_result = _run_gh(
+            gh,
+            ("api", f"repos/{repository}/git/tags/{tag_object_sha}"),
+            timeout=30,
+        )
+        if annotated_result.returncode != 0:
+            raise InstallerError("RELEASE_TAG_MISMATCH", "annotated release tag is unavailable")
+        annotated = _load_json(
+            annotated_result.stdout.encode(),
+            code="RELEASE_TAG_MISMATCH",
+            limit=MAX_RELEASE_JSON_BYTES,
+        )
+        target = annotated.get("object")
     if not isinstance(target, dict) or target.get("type") != "commit" or target.get("sha") != channel["commit"]:
         raise InstallerError("RELEASE_TAG_MISMATCH", "approved release tag does not point to the declared commit")
 
@@ -409,16 +426,16 @@ def inspect_existing_aven(system: str, channel: Mapping[str, Any]) -> str:
     distribution = value.get("distribution")
     approved_predecessor = (
         value.get("status") == "INSTALLED"
-        and value.get("aven_version") == APPROVED_UPGRADE_FROM_RC6["aven_version"]
+        and value.get("aven_version") == APPROVED_UPGRADE_FROM_RC7["aven_version"]
         and value.get("installation_lock_sha256")
-        == APPROVED_UPGRADE_FROM_RC6["installation_lock_sha256"]
+        == APPROVED_UPGRADE_FROM_RC7["installation_lock_sha256"]
         and value.get("workbench_commit")
-        == APPROVED_UPGRADE_FROM_RC6["workbench_commit"]
+        == APPROVED_UPGRADE_FROM_RC7["workbench_commit"]
         and isinstance(distribution, dict)
         and distribution.get("bootstrap_source_commit")
-        == APPROVED_UPGRADE_FROM_RC6["bootstrap_source_commit"]
+        == APPROVED_UPGRADE_FROM_RC7["bootstrap_source_commit"]
         and distribution.get("bootstrap_manifest_sha256")
-        == APPROVED_UPGRADE_FROM_RC6["bootstrap_manifest_sha256"]
+        == APPROVED_UPGRADE_FROM_RC7["bootstrap_manifest_sha256"]
     )
     if not same and not approved_predecessor:
         raise InstallerError("AVEN_DIFFERENT_INSTALLATION", "a different Aven version or lock is installed; use Aven lifecycle commands explicitly")
@@ -428,7 +445,7 @@ def inspect_existing_aven(system: str, channel: Mapping[str, Any]) -> str:
     status_value = _load_json(status.stdout.encode(), code="AVEN_EXISTING_UNREADABLE", limit=MAX_RELEASE_JSON_BYTES)
     if status_value.get("status") != "HEALTHY":
         raise InstallerError("AVEN_REPAIR_REQUIRED", "the exact installed Aven version requires repair")
-    return "ALREADY_INSTALLED" if same else "APPROVED_PREDECESSOR_RC6"
+    return "ALREADY_INSTALLED" if same else "APPROVED_PREDECESSOR_RC7"
 
 
 def download_release(gh: str, channel: Mapping[str, Any], destination: Path) -> None:
@@ -589,7 +606,7 @@ def _invoke_predecessor_uninstall(system: str, action: str, *, inherit: bool) ->
     if not command.is_file():
         raise InstallerError(
             "AVEN_UPGRADE_PREDECESSOR_MISSING",
-            "the exact approved Aven RC.6 predecessor is no longer available",
+            "the exact approved Aven RC.7 predecessor is no longer available",
         )
     completed = _run(
         (str(command), "uninstall", action),
@@ -603,7 +620,7 @@ def _invoke_predecessor_uninstall(system: str, action: str, *, inherit: bool) ->
             if action == "--plan"
             else "AVEN_UPGRADE_UNINSTALL_APPLY_FAILED"
         )
-        raise InstallerError(code, f"the exact Aven RC.6 uninstall {action} did not succeed")
+        raise InstallerError(code, f"the exact Aven RC.7 uninstall {action} did not succeed")
 
 
 def post_install_health(system: str, channel: Mapping[str, Any]) -> Path:
@@ -667,8 +684,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             print("Aven: ALREADY INSTALLED — exact release and lock are healthy")
             return 0
         if arguments.check:
-            if existing == "APPROVED_PREDECESSOR_RC6":
-                print("Aven: APPROVED RC.6 PREDECESSOR — exact RC.7 upgrade is available")
+            if existing == "APPROVED_PREDECESSOR_RC7":
+                print("Aven: APPROVED RC.7 PREDECESSOR — exact RC.8 upgrade is available")
                 print("Ready to upgrade: YES")
             else:
                 print("Aven: NOT_INSTALLED")
@@ -698,7 +715,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 channel,
                 env=bootstrap_environment,
             )
-            upgrading = existing == "APPROVED_PREDECESSOR_RC6"
+            upgrading = existing == "APPROVED_PREDECESSOR_RC7"
             if upgrading:
                 _invoke_predecessor_uninstall(system, "--plan", inherit=True)
             else:
@@ -709,15 +726,15 @@ def main(argv: Sequence[str] | None = None) -> int:
                     inherit=True,
                     env=bootstrap_environment,
                 )
-            question = "Upgrade Aven from exact RC.6 to RC.7 now?" if upgrading else "Install Aven now?"
+            question = "Upgrade Aven from exact RC.7 to RC.8 now?" if upgrading else "Install Aven now?"
             if not _prompt(question, assume_yes=arguments.yes, non_interactive=arguments.non_interactive):
                 print("Installation cancelled after the zero-effect Aven setup plan.")
                 return 0
             if upgrading:
-                if inspect_existing_aven(system, channel) != "APPROVED_PREDECESSOR_RC6":
+                if inspect_existing_aven(system, channel) != "APPROVED_PREDECESSOR_RC7":
                     raise InstallerError(
                         "AVEN_UPGRADE_PREDECESSOR_CHANGED",
-                        "the installed Aven RC.6 predecessor changed after planning",
+                        "the installed Aven RC.7 predecessor changed after planning",
                     )
                 _invoke_predecessor_uninstall(system, "--apply", inherit=True)
                 _invoke_bootstrap(

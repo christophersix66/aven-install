@@ -102,6 +102,31 @@ class InstallContractTests(unittest.TestCase):
         with mock.patch("installer._run_gh", side_effect=lambda *args, **kwargs: next(results)):
             installer.resolve_release("/usr/bin/gh", self.channel)
 
+    def test_release_resolution_peels_one_exact_annotated_tag(self) -> None:
+        tag_object = "a" * 40
+        release = {
+            "tag_name": self.channel["tag"],
+            "draft": False,
+            "prerelease": True,
+            "assets": [
+                {
+                    "name": self.channel["asset"],
+                    "size": self.channel["asset_size"],
+                    "digest": "sha256:" + self.channel["sha256"],
+                },
+                {"name": self.channel["checksum_asset"]},
+                {"name": self.channel["build_report_asset"]},
+            ],
+        }
+        results = iter([
+            _completed(json.dumps({"object": {"type": "tag", "sha": tag_object}})),
+            _completed(json.dumps({"object": {"type": "commit", "sha": self.channel["commit"]}})),
+            _completed(json.dumps(release)),
+        ])
+        with mock.patch("installer._run_gh", side_effect=lambda *args, **kwargs: next(results)) as run:
+            installer.resolve_release("/usr/bin/gh", self.channel)
+        self.assertIn(f"git/tags/{tag_object}", run.call_args_list[1].args[1][1])
+
     def test_release_resolution_rejects_tag_rebound(self) -> None:
         with mock.patch("installer._run_gh", return_value=_completed(json.dumps({"object": {"type": "commit", "sha": "0" * 40}}))):
             with self.assertRaises(installer.InstallerError) as caught:
@@ -170,33 +195,33 @@ class InstallContractTests(unittest.TestCase):
         self.assertIn("Mutations performed: 0", stdout.getvalue())
         download.assert_not_called()
 
-    def test_check_mode_accepts_only_exact_rc6_predecessor_for_upgrade(self) -> None:
+    def test_check_mode_accepts_only_exact_rc7_predecessor_for_upgrade(self) -> None:
         stdout = io.StringIO()
         with (
             mock.patch("installer.platform_identity", return_value=("linux", "x86_64")),
             mock.patch("installer.ensure_required_tools", return_value={"git": {"path": "/usr/bin/git", "version": "git version 2.40.0"}, "gh": {"path": "/usr/bin/gh", "version": "gh version 2.40.0"}}),
             mock.patch("installer.ensure_github_access"),
             mock.patch("installer.resolve_release"),
-            mock.patch("installer.inspect_existing_aven", return_value="APPROVED_PREDECESSOR_RC6"),
+            mock.patch("installer.inspect_existing_aven", return_value="APPROVED_PREDECESSOR_RC7"),
             mock.patch("installer.download_release") as download,
             mock.patch("sys.stdout", stdout),
         ):
             result = installer.main(["--manifest", str(ROOT / "channels/rc.json"), "--channel", "rc", "--check"])
         self.assertEqual(result, 0)
-        self.assertIn("APPROVED RC.6 PREDECESSOR", stdout.getvalue())
+        self.assertIn("APPROVED RC.7 PREDECESSOR", stdout.getvalue())
         self.assertIn("Ready to upgrade: YES", stdout.getvalue())
         self.assertIn("Mutations performed: 0", stdout.getvalue())
         download.assert_not_called()
 
-    def test_existing_install_requires_exact_current_or_exact_rc6_predecessor(self) -> None:
+    def test_existing_install_requires_exact_current_or_exact_rc7_predecessor(self) -> None:
         predecessor = {
             "status": "INSTALLED",
-            "aven_version": installer.APPROVED_UPGRADE_FROM_RC6["aven_version"],
-            "installation_lock_sha256": installer.APPROVED_UPGRADE_FROM_RC6["installation_lock_sha256"],
-            "workbench_commit": installer.APPROVED_UPGRADE_FROM_RC6["workbench_commit"],
+            "aven_version": installer.APPROVED_UPGRADE_FROM_RC7["aven_version"],
+            "installation_lock_sha256": installer.APPROVED_UPGRADE_FROM_RC7["installation_lock_sha256"],
+            "workbench_commit": installer.APPROVED_UPGRADE_FROM_RC7["workbench_commit"],
             "distribution": {
-                "bootstrap_source_commit": installer.APPROVED_UPGRADE_FROM_RC6["bootstrap_source_commit"],
-                "bootstrap_manifest_sha256": installer.APPROVED_UPGRADE_FROM_RC6["bootstrap_manifest_sha256"],
+                "bootstrap_source_commit": installer.APPROVED_UPGRADE_FROM_RC7["bootstrap_source_commit"],
+                "bootstrap_manifest_sha256": installer.APPROVED_UPGRADE_FROM_RC7["bootstrap_manifest_sha256"],
             },
         }
         healthy = {"status": "HEALTHY"}
@@ -209,7 +234,7 @@ class InstallContractTests(unittest.TestCase):
             ):
                 self.assertEqual(
                     installer.inspect_existing_aven("linux", self.channel),
-                    "APPROVED_PREDECESSOR_RC6",
+                    "APPROVED_PREDECESSOR_RC7",
                 )
             tampered = dict(predecessor)
             tampered["installation_lock_sha256"] = "0" * 64
@@ -246,13 +271,13 @@ class InstallContractTests(unittest.TestCase):
         self.assertEqual(result, 0)
         self.assertEqual(calls, ["--plan", "--apply"])
 
-    def test_exact_rc6_upgrade_uses_owned_uninstall_then_rc7_setup(self) -> None:
+    def test_exact_rc7_upgrade_uses_owned_uninstall_then_rc8_setup(self) -> None:
         calls: list[str] = []
         with tempfile.TemporaryDirectory() as temporary:
             temp_root = Path(temporary)
             archive = temp_root / "fixture.tar"
             archive.write_bytes(b"fixture")
-            existing = iter(["APPROVED_PREDECESSOR_RC6", "APPROVED_PREDECESSOR_RC6"])
+            existing = iter(["APPROVED_PREDECESSOR_RC7", "APPROVED_PREDECESSOR_RC7"])
             with (
                 mock.patch("installer.platform_identity", return_value=("linux", "x86_64")),
                 mock.patch("installer.ensure_required_tools", return_value={"git": {"path": "/usr/bin/git", "version": "git version 2.40.0"}, "gh": {"path": "/usr/bin/gh", "version": "gh version 2.40.0"}}),
