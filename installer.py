@@ -26,25 +26,25 @@ MINIMUM_TOOL_VERSIONS = {"git": (2, 20, 0), "gh": (2, 0, 0)}
 APPROVED_RC = {
     "schema": CHANNEL_SCHEMA,
     "channel": "rc",
-    "version": "1.0.0-rc.8",
+    "version": "1.0.0-rc.10",
     "repository": EXPECTED_REPOSITORY,
-    "tag": "v1.0.0-rc.8",
-    "commit": "3f9f37a9f6eb0d5a0882938706ae2ff2e8d0c2c7",
-    "asset": "aven-v1.0.0-rc.8-bootstrap-3f9f37a9f6eb.tar",
+    "tag": "v1.0.0-rc.10",
+    "commit": "459f98e7e22494cfa538e7962558ee8d3cfb13ea",
+    "asset": "aven-v1.0.0-rc.10-bootstrap-459f98e7e224.tar",
     "asset_size": 348160,
-    "sha256": "ac0e342124bd7a85cbd89d9b8e54c2cfa2cc982211bed8cc6d8f9fd3fdd98259",
-    "checksum_asset": "aven-v1.0.0-rc.8-bootstrap-3f9f37a9f6eb.tar.sha256",
-    "build_report_asset": "aven-v1.0.0-rc.8-bootstrap-3f9f37a9f6eb.build.json",
-    "installation_lock_sha256": "6430a3fcbdd257b8a019528234e824f010c01110d0ec9cc3bd7458cf4236da11",
-    "workbench_runtime_commit": "f54059df27ad2138a8ad33a8f616b2ae1dc94539",
+    "sha256": "0005848a2cf4ab66b57db10e0feeff3908f4449d9e78263f737db1d739890727",
+    "checksum_asset": "aven-v1.0.0-rc.10-bootstrap-459f98e7e224.tar.sha256",
+    "build_report_asset": "aven-v1.0.0-rc.10-bootstrap-459f98e7e224.build.json",
+    "installation_lock_sha256": "8e4bfd0babebdadb1bb96bd1760595c949e1c0a3094dc5f67d234d3a7d361804",
+    "workbench_runtime_commit": "7d026ca99fab23131c3493f76a1b6965c4c001bf",
     "prerelease": True,
 }
-APPROVED_UPGRADE_FROM_RC7 = {
-    "aven_version": "1.0.0-rc.7",
-    "installation_lock_sha256": "3cddcb39edbe60eace7db03a40dcd77f5ea3a2088c6c262ef332d593f4fe1d97",
-    "workbench_commit": "6a6731d8bc92382004166602f50d0e000a6fd577",
-    "bootstrap_source_commit": "810ecb8629d16ed1816f7547f7e8fc47b5662893",
-    "bootstrap_manifest_sha256": "ca8cfe7a3ec0d02d0a8300bcca3760ff3ed66d2432863297f9c14ca544485f22",
+APPROVED_UPGRADE_FROM_RC8 = {
+    "aven_version": "1.0.0-rc.8",
+    "installation_lock_sha256": "6430a3fcbdd257b8a019528234e824f010c01110d0ec9cc3bd7458cf4236da11",
+    "workbench_commit": "f54059df27ad2138a8ad33a8f616b2ae1dc94539",
+    "bootstrap_source_commit": "3f9f37a9f6eb0d5a0882938706ae2ff2e8d0c2c7",
+    "bootstrap_manifest_sha256": "1efaba8219feb9dc634d235dd504d448dbb45fb84dcd64ef0d495ccb7b741f1b",
 }
 MAX_MANIFEST_BYTES = 16_384
 MAX_RELEASE_JSON_BYTES = 2_000_000
@@ -139,7 +139,7 @@ def load_channel(path: Path, requested_channel: str) -> Mapping[str, Any]:
     if value != APPROVED_RC:
         raise InstallerError(
             "RELEASE_IDENTITY_NOT_APPROVED",
-            "the rc channel does not match the exact owner-approved Aven v1.0.0-rc.8 release",
+            "the rc channel does not match the exact owner-approved Aven v1.0.0-rc.10 release",
         )
     return value
 
@@ -426,16 +426,16 @@ def inspect_existing_aven(system: str, channel: Mapping[str, Any]) -> str:
     distribution = value.get("distribution")
     approved_predecessor = (
         value.get("status") == "INSTALLED"
-        and value.get("aven_version") == APPROVED_UPGRADE_FROM_RC7["aven_version"]
+        and value.get("aven_version") == APPROVED_UPGRADE_FROM_RC8["aven_version"]
         and value.get("installation_lock_sha256")
-        == APPROVED_UPGRADE_FROM_RC7["installation_lock_sha256"]
+        == APPROVED_UPGRADE_FROM_RC8["installation_lock_sha256"]
         and value.get("workbench_commit")
-        == APPROVED_UPGRADE_FROM_RC7["workbench_commit"]
+        == APPROVED_UPGRADE_FROM_RC8["workbench_commit"]
         and isinstance(distribution, dict)
         and distribution.get("bootstrap_source_commit")
-        == APPROVED_UPGRADE_FROM_RC7["bootstrap_source_commit"]
+        == APPROVED_UPGRADE_FROM_RC8["bootstrap_source_commit"]
         and distribution.get("bootstrap_manifest_sha256")
-        == APPROVED_UPGRADE_FROM_RC7["bootstrap_manifest_sha256"]
+        == APPROVED_UPGRADE_FROM_RC8["bootstrap_manifest_sha256"]
     )
     if not same and not approved_predecessor:
         raise InstallerError("AVEN_DIFFERENT_INSTALLATION", "a different Aven version or lock is installed; use Aven lifecycle commands explicitly")
@@ -445,7 +445,7 @@ def inspect_existing_aven(system: str, channel: Mapping[str, Any]) -> str:
     status_value = _load_json(status.stdout.encode(), code="AVEN_EXISTING_UNREADABLE", limit=MAX_RELEASE_JSON_BYTES)
     if status_value.get("status") != "HEALTHY":
         raise InstallerError("AVEN_REPAIR_REQUIRED", "the exact installed Aven version requires repair")
-    return "ALREADY_INSTALLED" if same else "APPROVED_PREDECESSOR_RC7"
+    return "ALREADY_INSTALLED" if same else "APPROVED_PREDECESSOR_RC8"
 
 
 def download_release(gh: str, channel: Mapping[str, Any], destination: Path) -> None:
@@ -685,7 +685,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             print("Aven: ALREADY INSTALLED — exact release and lock are healthy")
             return 0
         if arguments.check:
-            if existing == "APPROVED_PREDECESSOR_RC7":
+            if existing == "APPROVED_PREDECESSOR_RC8":
                 print("Aven: APPROVED RC.7 PREDECESSOR — exact RC.8 upgrade is available")
                 print("Ready to upgrade: YES")
             else:
@@ -716,7 +716,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 channel,
                 env=bootstrap_environment,
             )
-            upgrading = existing == "APPROVED_PREDECESSOR_RC7"
+            upgrading = existing == "APPROVED_PREDECESSOR_RC8"
             if upgrading:
                 _invoke_predecessor_uninstall(system, "--plan", inherit=True)
             else:
@@ -732,7 +732,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 print("Installation cancelled after the zero-effect Aven setup plan.")
                 return 0
             if upgrading:
-                if inspect_existing_aven(system, channel) != "APPROVED_PREDECESSOR_RC7":
+                if inspect_existing_aven(system, channel) != "APPROVED_PREDECESSOR_RC8":
                     raise InstallerError(
                         "AVEN_UPGRADE_PREDECESSOR_CHANGED",
                         "the installed Aven RC.7 predecessor changed after planning",
