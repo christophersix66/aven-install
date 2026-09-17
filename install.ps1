@@ -11,8 +11,8 @@ param(
 
 $ErrorActionPreference = "Stop"
 $BaseUrl = "https://raw.githubusercontent.com/christophersix66/aven-install/main"
-$CoordinatorSha256 = "ead7b597be60b052d6f2c8ae54519a7fb86271b175faaf11258c1aa4dcbde7a8"
-$RcManifestSha256 = "6db2ff42a66efc4990173a72741a8ce540563aeaeda530ee265625266c00eaf3"
+$CoordinatorSha256 = "a85e056004cf9b5f230683d23c9ac604810636f9b441423c1ea71a6805a87473"
+$RcManifestSha256 = "bd83c95fb671f3acda2a2a943b75d983943a2ff012bf4d9b4e19f7bf28dc02e2"
 $StableManifestSha256 = "93ef9399559cbc444686917dca9c43ae93df1d0dd8abd0e97c3cc95c47891dd5"
 
 function Show-Usage {

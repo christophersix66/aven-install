@@ -26,26 +26,26 @@ MINIMUM_TOOL_VERSIONS = {"git": (2, 20, 0), "gh": (2, 0, 0)}
 APPROVED_RC = {
     "schema": CHANNEL_SCHEMA,
     "channel": "rc",
-    "version": "1.0.0-rc.10",
+    "version": "1.0.0-rc.11",
     "repository": EXPECTED_REPOSITORY,
-    "tag": "v1.0.0-rc.10",
-    "commit": "459f98e7e22494cfa538e7962558ee8d3cfb13ea",
-    "asset": "aven-v1.0.0-rc.10-bootstrap-459f98e7e224.tar",
-    "asset_size": 348160,
-    "sha256": "0005848a2cf4ab66b57db10e0feeff3908f4449d9e78263f737db1d739890727",
-    "checksum_asset": "aven-v1.0.0-rc.10-bootstrap-459f98e7e224.tar.sha256",
-    "build_report_asset": "aven-v1.0.0-rc.10-bootstrap-459f98e7e224.build.json",
-    "installation_lock_sha256": "8e4bfd0babebdadb1bb96bd1760595c949e1c0a3094dc5f67d234d3a7d361804",
-    "workbench_runtime_commit": "7d026ca99fab23131c3493f76a1b6965c4c001bf",
+    "tag": "v1.0.0-rc.11",
+    "commit": "fc58727f229b78d8a7510caac2657a79f2012c88",
+    "asset": "aven-v1.0.0-rc.11-bootstrap-fc58727f229b.tar",
+    "asset_size": 358400,
+    "sha256": "ad68e8f4b0fa3ade26c47fe10457ae93df4ead4ccc0e2fac4a9bd95d4d9fcb6a",
+    "checksum_asset": "aven-v1.0.0-rc.11-bootstrap-fc58727f229b.tar.sha256",
+    "build_report_asset": "aven-v1.0.0-rc.11-bootstrap-fc58727f229b.build.json",
+    "installation_lock_sha256": "720b752304d8b913e0a54373d64a4dc5872e1a55d609af65ef1373f0aae619bf",
+    "workbench_runtime_commit": "209d9b9014fc0055cae5ccfc76525567d98fb706",
     "prerelease": True,
 }
-APPROVED_UPGRADE_FROM_RC8 = {
-    "aven_version": "1.0.0-rc.8",
-    "installation_lock_sha256": "6430a3fcbdd257b8a019528234e824f010c01110d0ec9cc3bd7458cf4236da11",
-    "workbench_commit": "f54059df27ad2138a8ad33a8f616b2ae1dc94539",
-    "bootstrap_source_commit": "3f9f37a9f6eb0d5a0882938706ae2ff2e8d0c2c7",
-    "bootstrap_manifest_sha256": "1efaba8219feb9dc634d235dd504d448dbb45fb84dcd64ef0d495ccb7b741f1b",
-}
+APPROVED_PREDECESSORS = ({
+    "aven_version": "1.0.0-rc.10",
+    "installation_lock_sha256": "8e4bfd0babebdadb1bb96bd1760595c949e1c0a3094dc5f67d234d3a7d361804",
+    "workbench_commit": "7d026ca99fab23131c3493f76a1b6965c4c001bf",
+    "bootstrap_source_commit": "459f98e7e22494cfa538e7962558ee8d3cfb13ea",
+    "bootstrap_manifest_sha256": "774e545a58b39c80e669609cf576af189200c8bdf435f03ce31552f486b86800",
+},)
 MAX_MANIFEST_BYTES = 16_384
 MAX_RELEASE_JSON_BYTES = 2_000_000
 MAX_ARCHIVE_MEMBERS = 128
@@ -139,7 +139,7 @@ def load_channel(path: Path, requested_channel: str) -> Mapping[str, Any]:
     if value != APPROVED_RC:
         raise InstallerError(
             "RELEASE_IDENTITY_NOT_APPROVED",
-            "the rc channel does not match the exact owner-approved Aven v1.0.0-rc.10 release",
+            "the rc channel does not match the exact owner-approved Aven v1.0.0-rc.11 release",
         )
     return value
 
@@ -424,19 +424,16 @@ def inspect_existing_aven(system: str, channel: Mapping[str, Any]) -> str:
         and value.get("workbench_commit") == channel["workbench_runtime_commit"]
     )
     distribution = value.get("distribution")
-    approved_predecessor = (
-        value.get("status") == "INSTALLED"
-        and value.get("aven_version") == APPROVED_UPGRADE_FROM_RC8["aven_version"]
-        and value.get("installation_lock_sha256")
-        == APPROVED_UPGRADE_FROM_RC8["installation_lock_sha256"]
-        and value.get("workbench_commit")
-        == APPROVED_UPGRADE_FROM_RC8["workbench_commit"]
+    approved_predecessor = next((
+        predecessor for predecessor in APPROVED_PREDECESSORS
+        if value.get("status") == "INSTALLED"
+        and value.get("aven_version") == predecessor["aven_version"]
+        and value.get("installation_lock_sha256") == predecessor["installation_lock_sha256"]
+        and value.get("workbench_commit") == predecessor["workbench_commit"]
         and isinstance(distribution, dict)
-        and distribution.get("bootstrap_source_commit")
-        == APPROVED_UPGRADE_FROM_RC8["bootstrap_source_commit"]
-        and distribution.get("bootstrap_manifest_sha256")
-        == APPROVED_UPGRADE_FROM_RC8["bootstrap_manifest_sha256"]
-    )
+        and distribution.get("bootstrap_source_commit") == predecessor["bootstrap_source_commit"]
+        and distribution.get("bootstrap_manifest_sha256") == predecessor["bootstrap_manifest_sha256"]
+    ), None)
     if not same and not approved_predecessor:
         raise InstallerError("AVEN_DIFFERENT_INSTALLATION", "a different Aven version or lock is installed; use Aven lifecycle commands explicitly")
     status = _run((command, "--json", "status"), timeout=60)
@@ -445,7 +442,10 @@ def inspect_existing_aven(system: str, channel: Mapping[str, Any]) -> str:
     status_value = _load_json(status.stdout.encode(), code="AVEN_EXISTING_UNREADABLE", limit=MAX_RELEASE_JSON_BYTES)
     if status_value.get("status") != "HEALTHY":
         raise InstallerError("AVEN_REPAIR_REQUIRED", "the exact installed Aven version requires repair")
-    return "ALREADY_INSTALLED" if same else "APPROVED_PREDECESSOR_RC8"
+    return (
+        "ALREADY_INSTALLED" if same
+        else "APPROVED_PREDECESSOR:" + approved_predecessor["aven_version"]
+    )
 
 
 def download_release(gh: str, channel: Mapping[str, Any], destination: Path) -> None:
@@ -602,12 +602,14 @@ def _invoke_bootstrap(
         raise InstallerError(code, f"Aven bootstrap setup {action} did not succeed")
 
 
-def _invoke_predecessor_uninstall(system: str, action: str, *, inherit: bool) -> None:
+def _invoke_predecessor_uninstall(
+    system: str, action: str, *, predecessor_version: str, inherit: bool
+) -> None:
     command = _conventional_aven(system)
     if not command.is_file():
         raise InstallerError(
             "AVEN_UPGRADE_PREDECESSOR_MISSING",
-            "the exact approved Aven RC.7 predecessor is no longer available",
+            f"the exact approved Aven {predecessor_version} predecessor is no longer available",
         )
     completed = _run(
         (str(command), "uninstall", action),
@@ -621,7 +623,7 @@ def _invoke_predecessor_uninstall(system: str, action: str, *, inherit: bool) ->
             if action == "--plan"
             else "AVEN_UPGRADE_UNINSTALL_APPLY_FAILED"
         )
-        raise InstallerError(code, f"the exact Aven RC.7 uninstall {action} did not succeed")
+        raise InstallerError(code, f"the exact Aven {predecessor_version} uninstall {action} did not succeed")
 
 
 def post_install_health(system: str, channel: Mapping[str, Any]) -> Path:
@@ -685,8 +687,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             print("Aven: ALREADY INSTALLED — exact release and lock are healthy")
             return 0
         if arguments.check:
-            if existing == "APPROVED_PREDECESSOR_RC8":
-                print("Aven: APPROVED RC.7 PREDECESSOR — exact RC.8 upgrade is available")
+            if existing.startswith("APPROVED_PREDECESSOR:"):
+                predecessor_version = existing.split(":", 1)[1]
+                print(f"Approved predecessor: {predecessor_version}")
+                print(f"Target release: {channel['version']}")
                 print("Ready to upgrade: YES")
             else:
                 print("Aven: NOT_INSTALLED")
@@ -716,9 +720,12 @@ def main(argv: Sequence[str] | None = None) -> int:
                 channel,
                 env=bootstrap_environment,
             )
-            upgrading = existing == "APPROVED_PREDECESSOR_RC8"
+            upgrading = existing.startswith("APPROVED_PREDECESSOR:")
+            predecessor_version = existing.split(":", 1)[1] if upgrading else None
             if upgrading:
-                _invoke_predecessor_uninstall(system, "--plan", inherit=True)
+                _invoke_predecessor_uninstall(
+                    system, "--plan", predecessor_version=predecessor_version, inherit=True
+                )
             else:
                 _invoke_bootstrap(
                     sys.executable,
@@ -727,17 +734,22 @@ def main(argv: Sequence[str] | None = None) -> int:
                     inherit=True,
                     env=bootstrap_environment,
                 )
-            question = "Upgrade Aven from exact RC.7 to RC.8 now?" if upgrading else "Install Aven now?"
+            question = (
+                f"Upgrade Aven from exact {predecessor_version} to {channel['version']} now?"
+                if upgrading else "Install Aven now?"
+            )
             if not _prompt(question, assume_yes=arguments.yes, non_interactive=arguments.non_interactive):
                 print("Installation cancelled after the zero-effect Aven setup plan.")
                 return 0
             if upgrading:
-                if inspect_existing_aven(system, channel) != "APPROVED_PREDECESSOR_RC8":
+                if inspect_existing_aven(system, channel) != existing:
                     raise InstallerError(
                         "AVEN_UPGRADE_PREDECESSOR_CHANGED",
-                        "the installed Aven RC.7 predecessor changed after planning",
+                        f"the installed Aven {predecessor_version} predecessor changed after planning",
                     )
-                _invoke_predecessor_uninstall(system, "--apply", inherit=True)
+                _invoke_predecessor_uninstall(
+                    system, "--apply", predecessor_version=predecessor_version, inherit=True
+                )
                 _invoke_bootstrap(
                     sys.executable,
                     bootstrap,
