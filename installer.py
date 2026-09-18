@@ -26,42 +26,26 @@ MINIMUM_TOOL_VERSIONS = {"git": (2, 20, 0), "gh": (2, 0, 0)}
 APPROVED_RC = {
     "schema": CHANNEL_SCHEMA,
     "channel": "rc",
-    "version": "1.0.0-rc.18",
+    "version": "1.0.0-rc.19",
     "repository": EXPECTED_REPOSITORY,
-    "tag": "v1.0.0-rc.18",
-    "commit": "380f817dd486ebaa5d5f7162840578fc55c520e9",
-    "asset": "aven-v1.0.0-rc.18-bootstrap-380f817dd486.tar",
-    "asset_size": 501760,
-    "sha256": "f362b87f8eab5a763930e90c07b2554637cca2c078a0c6603ac4fc20f4262b83",
-    "checksum_asset": "aven-v1.0.0-rc.18-bootstrap-380f817dd486.tar.sha256",
-    "build_report_asset": "aven-v1.0.0-rc.18-bootstrap-380f817dd486.build.json",
-    "installation_lock_sha256": "78537717c36f3dc0bccf8273380f10702a5e5f71b3b9d2e083731fa07a1fbe7c",
-    "workbench_runtime_commit": "e73ce10e129e63cce522f3b7dbf99f60574a3009",
+    "tag": "v1.0.0-rc.19",
+    "commit": "dbab68253c1b341624e9269d58997879a778fb09",
+    "asset": "aven-v1.0.0-rc.19-bootstrap-dbab68253c1b.tar",
+    "asset_size": 512000,
+    "sha256": "423cf28813881b16430f1899fefa1fc5b125d81bad37f125fcf9ce41626a3e84",
+    "checksum_asset": "aven-v1.0.0-rc.19-bootstrap-dbab68253c1b.tar.sha256",
+    "build_report_asset": "aven-v1.0.0-rc.19-bootstrap-dbab68253c1b.build.json",
+    "installation_lock_sha256": "9a688a9f3fad9a6d94b5f8329c0f591f650e29e40bc4c851f41c1db45e784f76",
+    "workbench_runtime_commit": "5c1892f56b16a28277ca4dcd5838e6ff315ef57d",
     "prerelease": True,
 }
 APPROVED_HEALTHY_PREDECESSORS = ({
-    "aven_version": "1.0.0-rc.16",
-    "installation_lock_sha256": "2be8522a92da226af46681c24f9c46f2efd0e95ec83f8039283dd434fd8ccfe7",
-    "workbench_commit": "90134db3b9034ec2320f396dcfed4c1041b75aeb",
-    "bootstrap_source_commit": "33d97f9ca362ac2cdecbce4fed1a06cbd97531e1",
-    "bootstrap_manifest_sha256": "3f3e3574b40bf047fcc4665018e8372810432b553436e866b2e646279493a9cd",
+    "aven_version": "1.0.0-rc.18",
+    "installation_lock_sha256": "78537717c36f3dc0bccf8273380f10702a5e5f71b3b9d2e083731fa07a1fbe7c",
+    "workbench_commit": "e73ce10e129e63cce522f3b7dbf99f60574a3009",
+    "bootstrap_source_commit": "380f817dd486ebaa5d5f7162840578fc55c520e9",
+    "bootstrap_manifest_sha256": "db8865ac048d3876fa218a5990e31ff08a0d72e025f0838057c1e564573098a3",
 },)
-APPROVED_DEFECTIVE_PREDECESSOR_RC17 = {
-    "aven_version": "1.0.0-rc.17",
-    "installation_lock_sha256": "e4745391d36c33b43c08835e7a5face6fb84e57930a2fa70f297c32f5c6d86b5",
-    "workbench_commit": "16a088f393bb73cc42019676e370fd6e44c35d7c",
-    "bootstrap_source_commit": "01f48ad26ca0be67240111b4b08d4486913da8b3",
-    "bootstrap_manifest_sha256": "bf87b48b05bab49ba53316ba12cbaa51cccf2b6780974e4d2315d471d199679d",
-}
-RC17_COMPONENTS = {
-    "platform-control": "6640cb5ffc6e411d28a952c87936355727ae371b",
-    "intelligence-platform": "473a05fc14f33f9b056de0921164dca13ff886da",
-    "engineering-intelligence-pack": "b381c489110e1670e64cb75649f1bd918284046e",
-    "legal-intelligence-pack": "64c266113bf54cb4a5a7ffb1555fdb105ea51f0e",
-    "intelligence-workbench": "16a088f393bb73cc42019676e370fd6e44c35d7c",
-    "keel": "ed2eaa444aa2843070cfb0cec363331e3172ded9",
-    "customBridge": "f26866de8d966f5eb1441d0be7388a49e9eec338",
-}
 MAX_MANIFEST_BYTES = 16_384
 MAX_RELEASE_JSON_BYTES = 2_000_000
 MAX_ARCHIVE_MEMBERS = 128
@@ -155,7 +139,7 @@ def load_channel(path: Path, requested_channel: str) -> Mapping[str, Any]:
     if value != APPROVED_RC:
         raise InstallerError(
             "RELEASE_IDENTITY_NOT_APPROVED",
-            "the rc channel does not match the exact owner-approved Aven v1.0.0-rc.18 release",
+            "the rc channel does not match the exact owner-approved Aven v1.0.0-rc.19 release",
         )
     return value
 
@@ -442,57 +426,6 @@ def _matches_predecessor(
     )
 
 
-def _verify_defective_rc17_installation(command: str) -> None:
-    """Verify exact immutable RC.17 bytes without its broken status path."""
-
-    completed = _run(
-        (command, "--json", "doctor", "--installation-only"), timeout=180
-    )
-    if completed.returncode != 0:
-        raise InstallerError(
-            "AVEN_DEFECTIVE_PREDECESSOR_UNVERIFIED",
-            "the exact RC.17 installation-only identity could not be verified",
-        )
-    value = _load_json(
-        completed.stdout.encode(),
-        code="AVEN_DEFECTIVE_PREDECESSOR_UNVERIFIED",
-        limit=MAX_RELEASE_JSON_BYTES,
-    )
-    components = value.get("components")
-    observed = {
-        item.get("component_id"): item
-        for item in components
-        if isinstance(item, dict) and isinstance(components, list)
-    } if isinstance(components, list) else {}
-    exact_components = (
-        set(observed) == set(RC17_COMPONENTS)
-        and all(
-            observed[component_id].get("state") == "INSTALLED_EXACT"
-            and observed[component_id].get("desired_commit") == commit
-            and observed[component_id].get("observed_commit") == commit
-            for component_id, commit in RC17_COMPONENTS.items()
-        )
-    )
-    aven = value.get("aven")
-    exact = (
-        value.get("status") == "HEALTHY"
-        and value.get("manifest_health") == "HEALTHY"
-        and value.get("installation_id")
-        == "aven-dev-" + APPROVED_DEFECTIVE_PREDECESSOR_RC17[
-            "installation_lock_sha256"
-        ][:20]
-        and isinstance(aven, dict)
-        and aven.get("installed_identity")
-        == APPROVED_DEFECTIVE_PREDECESSOR_RC17["workbench_commit"]
-        and exact_components
-    )
-    if not exact:
-        raise InstallerError(
-            "AVEN_DEFECTIVE_PREDECESSOR_UNVERIFIED",
-            "the installed RC.17 identity does not match the immutable defective release",
-        )
-
-
 def inspect_existing_aven(system: str, channel: Mapping[str, Any]) -> str:
     conventional = _conventional_aven(system)
     if not conventional.is_file():
@@ -512,14 +445,8 @@ def inspect_existing_aven(system: str, channel: Mapping[str, Any]) -> str:
         predecessor for predecessor in APPROVED_HEALTHY_PREDECESSORS
         if _matches_predecessor(value, predecessor)
     ), None)
-    defective_rc17 = _matches_predecessor(
-        value, APPROVED_DEFECTIVE_PREDECESSOR_RC17
-    )
-    if not same and healthy_predecessor is None and not defective_rc17:
+    if not same and healthy_predecessor is None:
         raise InstallerError("AVEN_DIFFERENT_INSTALLATION", "a different Aven version or lock is installed; use Aven lifecycle commands explicitly")
-    if defective_rc17:
-        _verify_defective_rc17_installation(command)
-        return "APPROVED_DEFECTIVE_PREDECESSOR_RC17:1.0.0-rc.17"
     status = _run((command, "--json", "status"), timeout=60)
     if status.returncode != 0:
         raise InstallerError("AVEN_REPAIR_REQUIRED", "the exact installed Aven version is unhealthy; run: aven status")
@@ -725,17 +652,11 @@ def post_install_health(system: str, channel: Mapping[str, Any]) -> Path:
 
 
 def _predecessor_version(classification: str) -> str | None:
-    prefixes = (
-        "APPROVED_HEALTHY_PREDECESSOR:",
-        "APPROVED_DEFECTIVE_PREDECESSOR_RC17:",
-    )
-    return next(
-        (
-            classification.removeprefix(prefix)
-            for prefix in prefixes
-            if classification.startswith(prefix)
-        ),
-        None,
+    prefix = "APPROVED_HEALTHY_PREDECESSOR:"
+    return (
+        classification.removeprefix(prefix)
+        if classification.startswith(prefix)
+        else None
     )
 
 
@@ -789,11 +710,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             predecessor_version = _predecessor_version(existing)
             if predecessor_version is not None:
                 print(f"Approved predecessor: {predecessor_version}")
-                if existing.startswith("APPROVED_DEFECTIVE_PREDECESSOR_RC17:"):
-                    print("Predecessor classification: APPROVED_DEFECTIVE_PREDECESSOR_RC17")
-                    print("Known-broken high-level status bypass: RC.17 ONLY")
-                else:
-                    print("Predecessor classification: APPROVED_HEALTHY_PREDECESSOR")
+                print("Predecessor classification: APPROVED_HEALTHY_PREDECESSOR")
                 print(f"Target release: {channel['version']}")
                 print("Ready to upgrade: YES")
             else:

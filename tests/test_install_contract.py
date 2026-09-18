@@ -202,15 +202,15 @@ class InstallContractTests(unittest.TestCase):
             mock.patch("installer.ensure_required_tools", return_value={"git": {"path": "/usr/bin/git", "version": "git version 2.40.0"}, "gh": {"path": "/usr/bin/gh", "version": "gh version 2.40.0"}}),
             mock.patch("installer.ensure_github_access"),
             mock.patch("installer.resolve_release"),
-            mock.patch("installer.inspect_existing_aven", return_value="APPROVED_HEALTHY_PREDECESSOR:1.0.0-rc.16"),
+            mock.patch("installer.inspect_existing_aven", return_value="APPROVED_HEALTHY_PREDECESSOR:1.0.0-rc.18"),
             mock.patch("installer.download_release") as download,
             mock.patch("sys.stdout", stdout),
         ):
             result = installer.main(["--manifest", str(ROOT / "channels/rc.json"), "--channel", "rc", "--check"])
         self.assertEqual(result, 0)
-        self.assertIn("Approved predecessor: 1.0.0-rc.16", stdout.getvalue())
+        self.assertIn("Approved predecessor: 1.0.0-rc.18", stdout.getvalue())
         self.assertIn("Predecessor classification: APPROVED_HEALTHY_PREDECESSOR", stdout.getvalue())
-        self.assertIn("Target release: 1.0.0-rc.18", stdout.getvalue())
+        self.assertIn("Target release: 1.0.0-rc.19", stdout.getvalue())
         self.assertNotIn("RC.7", stdout.getvalue())
         self.assertIn("Ready to upgrade: YES", stdout.getvalue())
         self.assertIn("Mutations performed: 0", stdout.getvalue())
@@ -238,7 +238,7 @@ class InstallContractTests(unittest.TestCase):
             ):
                 self.assertEqual(
                     installer.inspect_existing_aven("linux", self.channel),
-                    "APPROVED_HEALTHY_PREDECESSOR:1.0.0-rc.16",
+                    "APPROVED_HEALTHY_PREDECESSOR:1.0.0-rc.18",
                 )
             tampered = dict(predecessor)
             tampered["installation_lock_sha256"] = "0" * 64
@@ -250,8 +250,14 @@ class InstallContractTests(unittest.TestCase):
                 installer.inspect_existing_aven("linux", self.channel)
         self.assertEqual(caught.exception.code, "AVEN_DIFFERENT_INSTALLATION")
 
-    def test_exact_defective_rc17_uses_installation_only_recovery_identity(self) -> None:
-        exact = installer.APPROVED_DEFECTIVE_PREDECESSOR_RC17
+    def test_exact_rc17_is_not_carried_forward_as_rc19_predecessor(self) -> None:
+        exact = {
+            "aven_version": "1.0.0-rc.17",
+            "installation_lock_sha256": "e4745391d36c33b43c08835e7a5face6fb84e57930a2fa70f297c32f5c6d86b5",
+            "workbench_commit": "16a088f393bb73cc42019676e370fd6e44c35d7c",
+            "bootstrap_source_commit": "01f48ad26ca0be67240111b4b08d4486913da8b3",
+            "bootstrap_manifest_sha256": "bf87b48b05bab49ba53316ba12cbaa51cccf2b6780974e4d2315d471d199679d",
+        }
         version = {
             "status": "INSTALLED",
             "aven_version": exact["aven_version"],
@@ -262,66 +268,18 @@ class InstallContractTests(unittest.TestCase):
                 "bootstrap_manifest_sha256": exact["bootstrap_manifest_sha256"],
             },
         }
-        doctor = {
-            "status": "HEALTHY",
-            "manifest_health": "HEALTHY",
-            "installation_id": "aven-dev-" + exact["installation_lock_sha256"][:20],
-            "aven": {"installed_identity": exact["workbench_commit"]},
-            "components": [
-                {
-                    "component_id": component_id,
-                    "state": "INSTALLED_EXACT",
-                    "desired_commit": commit,
-                    "observed_commit": commit,
-                }
-                for component_id, commit in installer.RC17_COMPONENTS.items()
-            ],
-        }
         with tempfile.TemporaryDirectory() as temporary:
             launcher = Path(temporary) / "aven"
             launcher.write_text("fixture", encoding="utf-8")
             with (
                 mock.patch("installer._conventional_aven", return_value=launcher),
-                mock.patch(
-                    "installer._run",
-                    side_effect=[
-                        _completed(json.dumps(version)),
-                        _completed(json.dumps(doctor)),
-                    ],
-                ) as run,
-            ):
-                self.assertEqual(
-                    installer.inspect_existing_aven("linux", self.channel),
-                    "APPROVED_DEFECTIVE_PREDECESSOR_RC17:1.0.0-rc.17",
-                )
-        commands = [item.args[0] for item in run.call_args_list]
-        self.assertEqual(commands[1][1:], ("--json", "doctor", "--installation-only"))
-        self.assertNotIn("status", [argument for command in commands for argument in command])
-
-    def test_modified_rc17_recovery_attempt_is_rejected(self) -> None:
-        exact = installer.APPROVED_DEFECTIVE_PREDECESSOR_RC17
-        modified = {
-            "status": "INSTALLED",
-            "aven_version": exact["aven_version"],
-            "installation_lock_sha256": "0" * 64,
-            "workbench_commit": exact["workbench_commit"],
-            "distribution": {
-                "bootstrap_source_commit": exact["bootstrap_source_commit"],
-                "bootstrap_manifest_sha256": exact["bootstrap_manifest_sha256"],
-            },
-        }
-        with tempfile.TemporaryDirectory() as temporary:
-            launcher = Path(temporary) / "aven"
-            launcher.write_text("fixture", encoding="utf-8")
-            with (
-                mock.patch("installer._conventional_aven", return_value=launcher),
-                mock.patch("installer._run", return_value=_completed(json.dumps(modified))),
+                mock.patch("installer._run", return_value=_completed(json.dumps(version))),
                 self.assertRaises(installer.InstallerError) as caught,
             ):
                 installer.inspect_existing_aven("linux", self.channel)
         self.assertEqual(caught.exception.code, "AVEN_DIFFERENT_INSTALLATION")
 
-    def test_unhealthy_install_without_exact_rc17_identity_has_no_bypass(self) -> None:
+    def test_unhealthy_exact_rc18_predecessor_has_no_bypass(self) -> None:
         exact = installer.APPROVED_HEALTHY_PREDECESSORS[0]
         version = {
             "status": "INSTALLED",
@@ -400,8 +358,8 @@ class InstallContractTests(unittest.TestCase):
             archive = temp_root / "fixture.tar"
             archive.write_bytes(b"fixture")
             existing = iter([
-                "APPROVED_HEALTHY_PREDECESSOR:1.0.0-rc.16",
-                "APPROVED_HEALTHY_PREDECESSOR:1.0.0-rc.16",
+                "APPROVED_HEALTHY_PREDECESSOR:1.0.0-rc.18",
+                "APPROVED_HEALTHY_PREDECESSOR:1.0.0-rc.18",
             ])
             with (
                 mock.patch("installer.platform_identity", return_value=("linux", "x86_64")),
@@ -423,7 +381,7 @@ class InstallContractTests(unittest.TestCase):
         self.assertEqual(result, 0)
         self.assertEqual(
             calls,
-            ["uninstall:1.0.0-rc.16:--plan", "uninstall:1.0.0-rc.16:--apply", "setup:--plan", "setup:--apply"],
+            ["uninstall:1.0.0-rc.18:--plan", "uninstall:1.0.0-rc.18:--apply", "setup:--plan", "setup:--apply"],
         )
 
     def test_predecessor_uninstall_uses_only_conventional_owned_launcher(self) -> None:
@@ -435,7 +393,7 @@ class InstallContractTests(unittest.TestCase):
                 mock.patch("installer._run", return_value=_completed()) as run,
             ):
                 installer._invoke_predecessor_uninstall(
-                    "linux", "--plan", predecessor_version="1.0.0-rc.16", inherit=False
+                    "linux", "--plan", predecessor_version="1.0.0-rc.18", inherit=False
                 )
         self.assertEqual(run.call_args.args[0], (str(launcher), "uninstall", "--plan"))
         self.assertEqual(run.call_args.kwargs["cwd"], Path.home())
