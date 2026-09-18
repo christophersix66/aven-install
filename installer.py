@@ -26,25 +26,25 @@ MINIMUM_TOOL_VERSIONS = {"git": (2, 20, 0), "gh": (2, 0, 0)}
 APPROVED_RC = {
     "schema": CHANNEL_SCHEMA,
     "channel": "rc",
-    "version": "1.0.0-rc.13",
+    "version": "1.0.0-rc.14",
     "repository": EXPECTED_REPOSITORY,
-    "tag": "v1.0.0-rc.13",
-    "commit": "763e4e7394d22bf488fa0337d67047d264d5f790",
-    "asset": "aven-v1.0.0-rc.13-bootstrap-763e4e7394d2.tar",
-    "asset_size": 358400,
-    "sha256": "41d7ca7d68749c3fdd890251b78343c0591cff42713f1d2f13244f388c9a3bff",
-    "checksum_asset": "aven-v1.0.0-rc.13-bootstrap-763e4e7394d2.tar.sha256",
-    "build_report_asset": "aven-v1.0.0-rc.13-bootstrap-763e4e7394d2.build.json",
-    "installation_lock_sha256": "cc001a45c6d602129605ecb3604299491e749258488b674ef9f5e0f95c05b313",
-    "workbench_runtime_commit": "856e3ebb25eb76335b10a52356ca928dca8f6c0c",
+    "tag": "v1.0.0-rc.14",
+    "commit": "78c3ec5914160f3464663dfa1cd54f9bbfa4a040",
+    "asset": "aven-v1.0.0-rc.14-bootstrap-78c3ec591416.tar",
+    "asset_size": 409600,
+    "sha256": "5fc3dc8c3a71db95f71cc356554efdd1d5c76e773534be28edd60d4f683373d1",
+    "checksum_asset": "aven-v1.0.0-rc.14-bootstrap-78c3ec591416.tar.sha256",
+    "build_report_asset": "aven-v1.0.0-rc.14-bootstrap-78c3ec591416.build.json",
+    "installation_lock_sha256": "e2763a208c2d75de6c4b59fa82c845f6a0fdf80d46efec638835b2c7e8545b7c",
+    "workbench_runtime_commit": "e0bb0630753c4b525d5033506c9f78fa3eead7db",
     "prerelease": True,
 }
 APPROVED_PREDECESSORS = ({
-    "aven_version": "1.0.0-rc.12",
-    "installation_lock_sha256": "fe71b830934dac186917e81e810c938e35ec1e28259b89a61760057efc7ca340",
-    "workbench_commit": "9fcff5ea50201fd16836de02863e907a42ee05c9",
-    "bootstrap_source_commit": "2d3fc11c4a162a481acc455e2d8721e96f7b95e4",
-    "bootstrap_manifest_sha256": "b5ff8ced2ee290d9458dc82ad1c8ab8a418e1243f724f369e24b8a983c78f6b3",
+    "aven_version": "1.0.0-rc.13",
+    "installation_lock_sha256": "cc001a45c6d602129605ecb3604299491e749258488b674ef9f5e0f95c05b313",
+    "workbench_commit": "856e3ebb25eb76335b10a52356ca928dca8f6c0c",
+    "bootstrap_source_commit": "763e4e7394d22bf488fa0337d67047d264d5f790",
+    "bootstrap_manifest_sha256": "c2394c48a2f39e1f034639a0ad11b37ace063b946b3acabf8a6ac89d1991e469",
 },)
 MAX_MANIFEST_BYTES = 16_384
 MAX_RELEASE_JSON_BYTES = 2_000_000
@@ -139,7 +139,7 @@ def load_channel(path: Path, requested_channel: str) -> Mapping[str, Any]:
     if value != APPROVED_RC:
         raise InstallerError(
             "RELEASE_IDENTITY_NOT_APPROVED",
-            "the rc channel does not match the exact owner-approved Aven v1.0.0-rc.13 release",
+            "the rc channel does not match the exact owner-approved Aven v1.0.0-rc.14 release",
         )
     return value
 
