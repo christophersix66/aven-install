@@ -14,7 +14,7 @@ curl -fsSL https://raw.githubusercontent.com/christophersix66/aven-install/main/
 irm https://raw.githubusercontent.com/christophersix66/aven-install/main/install.ps1 | iex
 ```
 
-The current default channel is explicitly `rc`: Aven `1.0.0-rc.14`. Stable `1.0.0` does not exist and is not silently substituted.
+The current default channel is explicitly `rc`: Aven `1.0.0-rc.15`. Stable `1.0.0` does not exist and is not silently substituted.
 
 ## What the installer does
 
@@ -71,7 +71,7 @@ less install.sh installer.py channels/rc.json
 ./install.sh --channel rc
 ```
 
-When run from a checkout, the entrypoint automatically uses the adjacent coordinator and channel files and verifies their compiled SHA-256 values. For a reproducible review, check out the exact installer commit accepted by your organization before inspection. The coordinator also fails closed unless the channel is the exact approved private Aven `v1.0.0-rc.14` identity and its tag, source commit, release posture, asset identity, and SHA-256 all match. Exact `1.0.0-rc.13` is the sole approved predecessor for this transition; older or failed candidates are rejected rather than accepted by version ordering.
+When run from a checkout, the entrypoint automatically uses the adjacent coordinator and channel files and verifies their compiled SHA-256 values. For a reproducible review, check out the exact installer commit accepted by your organization before inspection. The coordinator also fails closed unless the channel is the exact approved private Aven `v1.0.0-rc.15` identity and its tag, source commit, release posture, asset identity, and SHA-256 all match. Exact `1.0.0-rc.14` is the sole approved predecessor for this transition; older or failed candidates are rejected rather than accepted by version ordering.
 
 ## Non-interactive use
 
