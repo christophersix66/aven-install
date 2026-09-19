@@ -15,15 +15,15 @@ ROOT = Path(__file__).resolve().parents[1]
 class ChannelManifestTests(unittest.TestCase):
     def test_rc_channel_is_exact(self) -> None:
         value = installer.load_channel(ROOT / "channels/rc.json", "rc")
-        self.assertEqual(value["version"], "1.0.0-rc.19")
-        self.assertEqual(value["tag"], "v1.0.0-rc.19")
+        self.assertEqual(value["version"], "1.0.0-rc.20")
+        self.assertEqual(value["tag"], "v1.0.0-rc.20")
         self.assertEqual(
             value["commit"],
-            "dbab68253c1b341624e9269d58997879a778fb09",
+            "61dab57277ab3fa3ca1d7193780ef4f2f57450a0",
         )
         self.assertEqual(
             value["sha256"],
-            "423cf28813881b16430f1899fefa1fc5b125d81bad37f125fcf9ce41626a3e84",
+            "fe9b935e63f45fccbe551c4cedf204ec6f63e6af60fd686e647d38e4ce631e2d",
         )
         self.assertTrue(value["prerelease"])
 
@@ -48,7 +48,7 @@ class ChannelManifestTests(unittest.TestCase):
 
     def test_manifest_rejects_command_injection_token(self) -> None:
         value = json.loads((ROOT / "channels/rc.json").read_text())
-        value["tag"] = "v1.0.0-rc.19; touch owned"
+        value["tag"] = "v1.0.0-rc.20; touch owned"
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "channel.json"
             path.write_text(json.dumps(value), encoding="utf-8")

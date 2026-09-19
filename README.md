@@ -14,7 +14,7 @@ curl -fsSL https://raw.githubusercontent.com/christophersix66/aven-install/main/
 irm https://raw.githubusercontent.com/christophersix66/aven-install/main/install.ps1 | iex
 ```
 
-The current default channel is explicitly `rc`: Aven `1.0.0-rc.19`. Stable `1.0.0` does not exist and is not silently substituted.
+The current default channel is explicitly `rc`: Aven `1.0.0-rc.20`. Stable `1.0.0` does not exist and is not silently substituted.
 
 ## What the installer does
 
@@ -71,7 +71,7 @@ less install.sh installer.py channels/rc.json
 ./install.sh --channel rc
 ```
 
-When run from a checkout, the entrypoint automatically uses the adjacent coordinator and channel files and verifies their compiled SHA-256 values. For a reproducible review, check out the exact installer commit accepted by your organization before inspection. The coordinator also fails closed unless the channel is the exact approved private Aven `v1.0.0-rc.19` identity and its tag, source commit, release posture, asset identity, and SHA-256 all match. Exact healthy `1.0.0-rc.18` is the sole approved predecessor. RC.17 remains immutable defective history but its dedicated recovery exception is not carried forward to RC.19. Modified RC.18 installations, unhealthy installations, older releases, and failed candidates are rejected.
+When run from a checkout, the entrypoint automatically uses the adjacent coordinator and channel files and verifies their compiled SHA-256 values. For a reproducible review, check out the exact installer commit accepted by your organization before inspection. The coordinator also fails closed unless the channel is the exact approved private Aven `v1.0.0-rc.20` identity and its tag, source commit, release posture, asset identity, and SHA-256 all match. Exact healthy `1.0.0-rc.19` is the sole approved predecessor. RC.17 remains immutable defective history and no defective-predecessor exception is carried forward. Modified RC.19 installations, unhealthy installations, older releases, and failed candidates are rejected.
 
 ## Non-interactive use
 

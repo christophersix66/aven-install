@@ -202,15 +202,15 @@ class InstallContractTests(unittest.TestCase):
             mock.patch("installer.ensure_required_tools", return_value={"git": {"path": "/usr/bin/git", "version": "git version 2.40.0"}, "gh": {"path": "/usr/bin/gh", "version": "gh version 2.40.0"}}),
             mock.patch("installer.ensure_github_access"),
             mock.patch("installer.resolve_release"),
-            mock.patch("installer.inspect_existing_aven", return_value="APPROVED_HEALTHY_PREDECESSOR:1.0.0-rc.18"),
+            mock.patch("installer.inspect_existing_aven", return_value="APPROVED_HEALTHY_PREDECESSOR:1.0.0-rc.19"),
             mock.patch("installer.download_release") as download,
             mock.patch("sys.stdout", stdout),
         ):
             result = installer.main(["--manifest", str(ROOT / "channels/rc.json"), "--channel", "rc", "--check"])
         self.assertEqual(result, 0)
-        self.assertIn("Approved predecessor: 1.0.0-rc.18", stdout.getvalue())
+        self.assertIn("Approved predecessor: 1.0.0-rc.19", stdout.getvalue())
         self.assertIn("Predecessor classification: APPROVED_HEALTHY_PREDECESSOR", stdout.getvalue())
-        self.assertIn("Target release: 1.0.0-rc.19", stdout.getvalue())
+        self.assertIn("Target release: 1.0.0-rc.20", stdout.getvalue())
         self.assertNotIn("RC.7", stdout.getvalue())
         self.assertIn("Ready to upgrade: YES", stdout.getvalue())
         self.assertIn("Mutations performed: 0", stdout.getvalue())
@@ -238,7 +238,7 @@ class InstallContractTests(unittest.TestCase):
             ):
                 self.assertEqual(
                     installer.inspect_existing_aven("linux", self.channel),
-                    "APPROVED_HEALTHY_PREDECESSOR:1.0.0-rc.18",
+                    "APPROVED_HEALTHY_PREDECESSOR:1.0.0-rc.19",
                 )
             tampered = dict(predecessor)
             tampered["installation_lock_sha256"] = "0" * 64
@@ -358,8 +358,8 @@ class InstallContractTests(unittest.TestCase):
             archive = temp_root / "fixture.tar"
             archive.write_bytes(b"fixture")
             existing = iter([
-                "APPROVED_HEALTHY_PREDECESSOR:1.0.0-rc.18",
-                "APPROVED_HEALTHY_PREDECESSOR:1.0.0-rc.18",
+                "APPROVED_HEALTHY_PREDECESSOR:1.0.0-rc.19",
+                "APPROVED_HEALTHY_PREDECESSOR:1.0.0-rc.19",
             ])
             with (
                 mock.patch("installer.platform_identity", return_value=("linux", "x86_64")),
@@ -381,7 +381,7 @@ class InstallContractTests(unittest.TestCase):
         self.assertEqual(result, 0)
         self.assertEqual(
             calls,
-            ["uninstall:1.0.0-rc.18:--plan", "uninstall:1.0.0-rc.18:--apply", "setup:--plan", "setup:--apply"],
+            ["uninstall:1.0.0-rc.19:--plan", "uninstall:1.0.0-rc.19:--apply", "setup:--plan", "setup:--apply"],
         )
 
     def test_predecessor_uninstall_uses_only_conventional_owned_launcher(self) -> None:
@@ -393,7 +393,7 @@ class InstallContractTests(unittest.TestCase):
                 mock.patch("installer._run", return_value=_completed()) as run,
             ):
                 installer._invoke_predecessor_uninstall(
-                    "linux", "--plan", predecessor_version="1.0.0-rc.18", inherit=False
+                    "linux", "--plan", predecessor_version="1.0.0-rc.19", inherit=False
                 )
         self.assertEqual(run.call_args.args[0], (str(launcher), "uninstall", "--plan"))
         self.assertEqual(run.call_args.kwargs["cwd"], Path.home())
