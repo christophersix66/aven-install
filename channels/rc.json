@@ -1,16 +1,16 @@
 {
-  "asset": "aven-v1.0.0-rc.20-bootstrap-3ab8ec016dc0.tar",
+  "asset": "aven-v1.0.0-rc.20-bootstrap-687eebecd2c6.tar",
   "asset_size": 522240,
-  "build_report_asset": "aven-v1.0.0-rc.20-bootstrap-3ab8ec016dc0.build.json",
+  "build_report_asset": "aven-v1.0.0-rc.20-bootstrap-687eebecd2c6.build.json",
   "channel": "rc",
-  "checksum_asset": "aven-v1.0.0-rc.20-bootstrap-3ab8ec016dc0.tar.sha256",
-  "commit": "3ab8ec016dc078fbe89e8eb7792aadfaf1677e90",
-  "installation_lock_sha256": "c1b740c5cb358a61e7f06603011763ae162efd2ed579f13dfeb3521b48d9e6a0",
+  "checksum_asset": "aven-v1.0.0-rc.20-bootstrap-687eebecd2c6.tar.sha256",
+  "commit": "687eebecd2c6a210420a5d2478bf11c32ada371e",
+  "installation_lock_sha256": "2d5195cd37caf38645c79a2a629da8e0f9b83d91e54d26e963f8ce3acb49b640",
   "prerelease": true,
   "repository": "christophersix66/intelligence-workbench",
   "schema": "aven-install.channel.v1",
-  "sha256": "420d3163fd798716491d3df826e0bcbb3e7108337d8ad8d6d833992a8f0d23e8",
+  "sha256": "df9055bfbb789c6596baf37b6e19cf43daebf78226b7a9e809f9f31f24c26859",
   "tag": "v1.0.0-rc.20",
   "version": "1.0.0-rc.20",
-  "workbench_runtime_commit": "6396badd78d377bb703231b288f12da477e5d65b"
+  "workbench_runtime_commit": "fd8ec8aca8a56bc8678cd34ea18c79c548f98a4b"
 }
