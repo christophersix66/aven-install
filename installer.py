@@ -26,71 +26,30 @@ MINIMUM_TOOL_VERSIONS = {"git": (2, 20, 0), "gh": (2, 0, 0)}
 APPROVED_RC = {
     "schema": CHANNEL_SCHEMA,
     "channel": "rc",
-    "version": "1.0.0-rc.23",
+    "version": "1.0.0-rc.24",
     "repository": EXPECTED_REPOSITORY,
-    "tag": "v1.0.0-rc.23",
-    "commit": "44e8bcd2e5d1b4a5fec86c7582e05f3aa86565c3",
-    "asset": "aven-v1.0.0-rc.23-bootstrap-44e8bcd2e5d1.tar",
-    "asset_size": 573440,
-    "sha256": "f6f4addea8996c4df9419cfe6ba3e2229a226d1db558b0999439a2d634d3cbe5",
-    "checksum_asset": "aven-v1.0.0-rc.23-bootstrap-44e8bcd2e5d1.tar.sha256",
-    "build_report_asset": "aven-v1.0.0-rc.23-bootstrap-44e8bcd2e5d1.build.json",
-    "installation_lock_sha256": "02ec8060c4330d69eb044c7f1ed1ac35ca87d2b67395932b1fb716298ae5d47d",
-    "workbench_runtime_commit": "a88748d52ae236e27f51dc077d1cae032ab78b44",
+    "tag": "v1.0.0-rc.24",
+    "commit": "105a35f630e9fc845e45fb97d71c05bc3c5e88b5",
+    "asset": "aven-v1.0.0-rc.24-bootstrap-105a35f630e9.tar",
+    "asset_size": 583680,
+    "sha256": "728b9e9d2610b9320e4beb0247d29fa859833fe3a807caa56500dc555d6bcbe4",
+    "checksum_asset": "aven-v1.0.0-rc.24-bootstrap-105a35f630e9.tar.sha256",
+    "build_report_asset": "aven-v1.0.0-rc.24-bootstrap-105a35f630e9.build.json",
+    "installation_lock_sha256": "76cf947e04213d150ceaa607811f8173045692aa2a0be0d2725f2d184b05bc5c",
+    "workbench_runtime_commit": "5423026e215833ca93f3265d869af8ea69463ff2",
     "prerelease": True,
 }
 APPROVED_HEALTHY_PREDECESSORS = ({
-    "aven_version": "1.0.0-rc.22",
-    "installation_lock_sha256": "b7eb92066998e488aa6fb45740de52d9ce5467dccf2268cf810ec9751d30f5a4",
-    "workbench_commit": "80819396ef634256952ed14d68efcca71b1c8520",
-    "bootstrap_source_commit": "7ec3a5d1ef07c18436c5251d9f364681b4250ac8",
-    "bootstrap_manifest_sha256": "cbfae2163cf44eef300e640ea9761a29852d48677cd3eb72d479416d86a9651c",
+    "aven_version": "1.0.0-rc.23",
+    "installation_lock_sha256": "02ec8060c4330d69eb044c7f1ed1ac35ca87d2b67395932b1fb716298ae5d47d",
+    "workbench_commit": "a88748d52ae236e27f51dc077d1cae032ab78b44",
+    "bootstrap_source_commit": "44e8bcd2e5d1b4a5fec86c7582e05f3aa86565c3",
+    "bootstrap_manifest_sha256": "28c1a2c09078ee1530da727e91ba47fd625cb94658c42c628c07768c051b3100",
 },)
 CORRECTIVE_PREDECESSOR_SCHEMA = (
     "intelligence-workbench.aven-corrective-predecessor-admission.v1"
 )
-APPROVED_CORRECTIVE_PREDECESSORS = ({
-    "schema": CORRECTIVE_PREDECESSOR_SCHEMA,
-    "authorization": (
-        "AUTHORIZE_AVEN_RC23_CORRECTIVE_PREDECESSOR_ADMISSION_"
-        "AND_LIFECYCLE_RECOVERY_V1"
-    ),
-    "decision": "ADR-0195",
-    "predecessor": {
-        "aven_version": "1.0.0-rc.21",
-        "installation_lock_sha256": "e307f288de5e2d28fcc973c48a4c195de3ccf97f26b07e4147a98e4667bbe066",
-        "workbench_commit": "caf35515f788aba54109d91a17f3c2d421812cbc",
-        "workbench_tree": "ce645347499d80d3d0012df844e52800c51dc2ff",
-        "bootstrap_source_commit": "67036f2bf5a2928b84be61c0207824f1f8f32798",
-        "bootstrap_manifest_sha256": "7ec95f68f3436b2d97cf9b980c2da324eb86610d05128a4f0397957767b6d6aa",
-    },
-    "allowed_findings": ("KEEL_CODEX_HOST_DRIFTED",),
-    "required_components": {
-        "platform-control": "d2cea2c2f91bf9ee9a88085887b183b746518c3b",
-        "intelligence-platform": "473a05fc14f33f9b056de0921164dca13ff886da",
-        "engineering-intelligence-pack": "b381c489110e1670e64cb75649f1bd918284046e",
-        "legal-intelligence-pack": "64c266113bf54cb4a5a7ffb1555fdb105ea51f0e",
-        "intelligence-workbench": "caf35515f788aba54109d91a17f3c2d421812cbc",
-        "keel": "25f037ae7699f9ccf771c2186d0c1f3fa3f43662",
-        "customBridge": "f26866de8d966f5eb1441d0be7388a49e9eec338",
-    },
-    "required_runtime": {
-        "state": "OWNED_EXACT",
-        "ambient_site_packages_required": False,
-        "dependency_spec_sha256": "8bcbfa19942fc8323e4b47e7354880cff6736b2bea39ac3ebad849e8e56812fa",
-    },
-    "correction_target": {
-        "aven_version": "1.0.0-rc.23",
-        "release_source_binding": "EXACT_APPROVED_CHANNEL_COMMIT",
-        "runtime_binding": "EXACT_APPROVED_CHANNEL_RUNTIME_COMMIT",
-    },
-    "forward_only": True,
-    "required_post_upgrade": {
-        "core_distribution": "HEALTHY",
-        "forbidden_findings": ("KEEL_CODEX_HOST_DRIFTED",),
-        "global_presence": "AVAILABLE",
-    },
-},)
+APPROVED_CORRECTIVE_PREDECESSORS: tuple[Mapping[str, Any], ...] = ()
 MAX_MANIFEST_BYTES = 16_384
 MAX_RELEASE_JSON_BYTES = 2_000_000
 MAX_ARCHIVE_MEMBERS = 128
@@ -184,7 +143,7 @@ def load_channel(path: Path, requested_channel: str) -> Mapping[str, Any]:
     if value != APPROVED_RC:
         raise InstallerError(
             "RELEASE_IDENTITY_NOT_APPROVED",
-            "the rc channel does not match the exact owner-approved Aven v1.0.0-rc.23 release",
+            "the rc channel does not match the exact owner-approved Aven v1.0.0-rc.24 release",
         )
     return value
 

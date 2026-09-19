@@ -25,10 +25,10 @@ The installer prints a stable error code followed by the next useful action.
 | `AVEN_SETUP_APPLY_FAILED` | Aven setup apply did not complete | Read Aven's diagnostic; rerun the plan before another apply |
 | `AVEN_POST_INSTALL_UNHEALTHY` | Version/status/doctor did not confirm a healthy exact install | Run the installed launcher's `aven status` and `aven doctor` |
 
-RC.23 check mode reports `CORRECTIVE_UPGRADE_READY` only for exact RC.21 with
-the sole authorized host-only finding `KEEL_CODEX_HOST_DRIFTED`. That path is a
-forward correction and does not require wipe/uninstall. No other unhealthy
-installation is admitted.
+RC.24 check mode reports `NORMAL_UPGRADE_READY` only for exact healthy RC.23.
+It does not carry the RC.23-only defective RC.21 recovery exception forward.
+An unhealthy, drifted, older, or otherwise unknown predecessor remains
+fail-closed; use the exact authorized lifecycle path for that installed release.
 
 ## PATH
 

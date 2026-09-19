@@ -14,7 +14,7 @@ curl -fsSL https://raw.githubusercontent.com/christophersix66/aven-install/main/
 irm https://raw.githubusercontent.com/christophersix66/aven-install/main/install.ps1 | iex
 ```
 
-The current default channel is explicitly `rc`: Aven `1.0.0-rc.23`. Stable `1.0.0` does not exist and is not silently substituted.
+The current default channel is explicitly `rc`: Aven `1.0.0-rc.24`. Stable `1.0.0` does not exist and is not silently substituted.
 
 ## What the installer does
 
@@ -72,9 +72,9 @@ less install.sh installer.py channels/rc.json
 ./install.sh --channel rc
 ```
 
-When run from a checkout, the entrypoint automatically uses the adjacent coordinator and channel files and verifies their compiled SHA-256 values. For a reproducible review, check out the exact installer commit accepted by your organization before inspection. The coordinator also fails closed unless the channel is the exact approved private Aven `v1.0.0-rc.23` identity and its tag, source commit, release posture, asset identity, and SHA-256 all match.
+When run from a checkout, the entrypoint automatically uses the adjacent coordinator and channel files and verifies their compiled SHA-256 values. For a reproducible review, check out the exact installer commit accepted by your organization before inspection. The coordinator also fails closed unless the channel is the exact approved private Aven `v1.0.0-rc.24` identity and its tag, source commit, release posture, asset identity, and SHA-256 all match.
 
-Exact healthy RC.22 is the normal predecessor. RC.23 also admits exact RC.21 only when its runtime, tree, lock, bootstrap identity, owned Python environment, every component, Keel source, and staged Keel package are exact and the sole finding is `KEEL_CODEX_HOST_DRIFTED`. Check mode reports `CORRECTIVE_UPGRADE_READY` and the exact admitted finding. Wrong or additional findings, any core drift, healthy RC.21 skip-upgrade, older releases, and downgrade remain rejected. This target-authorized recovery does not reactivate any historical RC.17 exception and does not require uninstalling the known defective RC.21 state first.
+Exact healthy RC.23 is the sole RC.24 predecessor. Check mode reports `NORMAL_UPGRADE_READY`; an unhealthy predecessor, an older release, an identity mismatch, or a downgrade remains rejected. The historical exact defective RC.21 recovery path is owned only by immutable RC.23 and is not carried forward into RC.24.
 
 ## Non-interactive use
 

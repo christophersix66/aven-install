@@ -41,63 +41,16 @@ class InstallContractTests(unittest.TestCase):
                     info.linkname = "../../outside"
                     archive.addfile(info)
 
-    def _rc23_channel(self) -> dict[str, object]:
+    def _rc24_channel(self) -> dict[str, object]:
         value = dict(self.channel)
         value.update({
-            "version": "1.0.0-rc.23",
-            "tag": "v1.0.0-rc.23",
+            "version": "1.0.0-rc.24",
+            "tag": "v1.0.0-rc.24",
             "commit": "a" * 40,
             "workbench_runtime_commit": "b" * 40,
             "installation_lock_sha256": "c" * 64,
         })
         return value
-
-    def _corrective_version(self) -> dict[str, object]:
-        exact = installer.APPROVED_CORRECTIVE_PREDECESSORS[0]["predecessor"]
-        return {
-            "status": "INSTALLED",
-            "aven_version": exact["aven_version"],
-            "installation_lock_sha256": exact["installation_lock_sha256"],
-            "workbench_commit": exact["workbench_commit"],
-            "workbench_tree": exact["workbench_tree"],
-            "distribution": {
-                "bootstrap_source_commit": exact["bootstrap_source_commit"],
-                "bootstrap_manifest_sha256": exact["bootstrap_manifest_sha256"],
-            },
-        }
-
-    def _corrective_doctor(self) -> dict[str, object]:
-        contract = installer.APPROVED_CORRECTIVE_PREDECESSORS[0]
-        return {
-            "schema": "intelligence-workbench.aven-machine-doctor.v1",
-            "status": "NEEDS_ATTENTION",
-            "manifest_health": "DRIFTED_OR_INCOMPLETE",
-            "findings": list(contract["allowed_findings"]),
-            "aven": {
-                "command": "EXPECTED",
-                "codex_discovery_skill": "EXPECTED",
-                "claude_discovery_skill": "EXPECTED",
-                "installed_identity": contract["predecessor"]["workbench_commit"],
-            },
-            "runtime": dict(contract["required_runtime"]),
-            "components": [
-                {
-                    "component_id": component_id,
-                    "desired_commit": commit,
-                    "observed_commit": commit,
-                    "state": "INSTALLED_EXACT",
-                }
-                for component_id, commit in contract["required_components"].items()
-            ],
-            "keel": {
-                "source": {
-                    "state": "INSTALLED_EXACT",
-                    "commit": contract["required_components"]["keel"],
-                },
-                "codex_package": {"state": "STAGED_EXACT"},
-                "codex_host_installation": "DRIFTED",
-            },
-        }
 
     def test_macos_entrypoint_discovers_homebrew_python_without_shell_mutation(self) -> None:
         script = (ROOT / "install.sh").read_text(encoding="utf-8")
@@ -270,47 +223,22 @@ class InstallContractTests(unittest.TestCase):
             mock.patch("installer.ensure_required_tools", return_value={"git": {"path": "/usr/bin/git", "version": "git version 2.40.0"}, "gh": {"path": "/usr/bin/gh", "version": "gh version 2.40.0"}}),
             mock.patch("installer.ensure_github_access"),
             mock.patch("installer.resolve_release"),
-            mock.patch("installer.inspect_existing_aven", return_value="NORMAL_UPGRADE_READY:1.0.0-rc.22"),
+            mock.patch("installer.inspect_existing_aven", return_value="NORMAL_UPGRADE_READY:1.0.0-rc.23"),
             mock.patch("installer.download_release") as download,
             mock.patch("sys.stdout", stdout),
         ):
             result = installer.main(["--manifest", str(ROOT / "channels/rc.json"), "--channel", "rc", "--check"])
         self.assertEqual(result, 0)
-        self.assertIn("Approved predecessor: 1.0.0-rc.22", stdout.getvalue())
+        self.assertIn("Approved predecessor: 1.0.0-rc.23", stdout.getvalue())
         self.assertIn("Predecessor classification: NORMAL_UPGRADE_READY", stdout.getvalue())
-        self.assertIn("Target release: 1.0.0-rc.23", stdout.getvalue())
+        self.assertIn("Target release: 1.0.0-rc.24", stdout.getvalue())
         self.assertNotIn("RC.7", stdout.getvalue())
         self.assertIn("Ready to upgrade: YES", stdout.getvalue())
         self.assertIn("Mutations performed: 0", stdout.getvalue())
         download.assert_not_called()
 
-    def test_check_mode_renders_corrective_predecessor_and_exact_finding(self) -> None:
-        stdout = io.StringIO()
-        with (
-            mock.patch("installer.platform_identity", return_value=("macos", "arm64")),
-            mock.patch("installer.ensure_required_tools", return_value={"git": {"path": "/usr/bin/git", "version": "git version 2.40.0"}, "gh": {"path": "/usr/bin/gh", "version": "gh version 2.40.0"}}),
-            mock.patch("installer.ensure_github_access"),
-            mock.patch("installer.resolve_release"),
-            mock.patch(
-                "installer.inspect_existing_aven",
-                return_value=(
-                    "CORRECTIVE_UPGRADE_READY:1.0.0-rc.21:"
-                    "KEEL_CODEX_HOST_DRIFTED"
-                ),
-            ),
-            mock.patch("installer.download_release") as download,
-            mock.patch("sys.stdout", stdout),
-        ):
-            result = installer.main([
-                "--manifest", str(ROOT / "channels/rc.json"),
-                "--channel", "rc", "--check",
-            ])
-        self.assertEqual(result, 0)
-        self.assertIn("Predecessor classification: CORRECTIVE_UPGRADE_READY", stdout.getvalue())
-        self.assertIn("Admitted findings: KEEL_CODEX_HOST_DRIFTED", stdout.getvalue())
-        self.assertIn("Unrelated drift detected: NO", stdout.getvalue())
-        self.assertIn("Mutations performed: 0", stdout.getvalue())
-        download.assert_not_called()
+    def test_rc24_has_no_direct_corrective_predecessor_exception(self) -> None:
+        self.assertEqual(installer.APPROVED_CORRECTIVE_PREDECESSORS, ())
 
     def test_existing_install_requires_exact_current_or_approved_predecessor(self) -> None:
         exact = installer.APPROVED_HEALTHY_PREDECESSORS[0]
@@ -333,8 +261,8 @@ class InstallContractTests(unittest.TestCase):
                 mock.patch("installer._run", side_effect=[_completed(json.dumps(predecessor)), _completed(json.dumps(healthy))]),
             ):
                 self.assertEqual(
-                    installer.inspect_existing_aven("linux", self._rc23_channel()),
-                    "NORMAL_UPGRADE_READY:1.0.0-rc.22",
+                    installer.inspect_existing_aven("linux", self._rc24_channel()),
+                    "NORMAL_UPGRADE_READY:1.0.0-rc.23",
                 )
             tampered = dict(predecessor)
             tampered["installation_lock_sha256"] = "0" * 64
@@ -343,7 +271,7 @@ class InstallContractTests(unittest.TestCase):
                 mock.patch("installer._run", return_value=_completed(json.dumps(tampered))),
                 self.assertRaises(installer.InstallerError) as caught,
             ):
-                installer.inspect_existing_aven("linux", self._rc23_channel())
+                installer.inspect_existing_aven("linux", self._rc24_channel())
         self.assertEqual(caught.exception.code, "AVEN_DIFFERENT_INSTALLATION")
 
     def test_exact_rc17_is_not_carried_forward_as_rc19_predecessor(self) -> None:
@@ -375,7 +303,7 @@ class InstallContractTests(unittest.TestCase):
                 installer.inspect_existing_aven("linux", self.channel)
         self.assertEqual(caught.exception.code, "AVEN_DIFFERENT_INSTALLATION")
 
-    def test_unhealthy_exact_rc18_predecessor_has_no_bypass(self) -> None:
+    def test_unhealthy_exact_rc23_predecessor_has_no_bypass(self) -> None:
         exact = installer.APPROVED_HEALTHY_PREDECESSORS[0]
         version = {
             "status": "INSTALLED",
@@ -401,90 +329,17 @@ class InstallContractTests(unittest.TestCase):
                 installer.inspect_existing_aven("linux", self.channel)
         self.assertEqual(caught.exception.code, "AVEN_REPAIR_REQUIRED")
 
-    def test_exact_rc21_known_host_defect_is_corrective_upgrade_ready(self) -> None:
-        version = self._corrective_version()
-        doctor = self._corrective_doctor()
-        with tempfile.TemporaryDirectory() as temporary:
-            launcher = Path(temporary) / "aven"
-            launcher.write_text("fixture", encoding="utf-8")
-            with (
-                mock.patch("installer._conventional_aven", return_value=launcher),
-                mock.patch(
-                    "installer._run",
-                    side_effect=[
-                        _completed(json.dumps(version)),
-                        _completed(returncode=2),
-                        _completed(json.dumps(doctor), returncode=2),
-                    ],
-                ),
-            ):
-                observed = installer.inspect_existing_aven(
-                    "linux", self._rc23_channel()
-                )
-        self.assertEqual(
-            observed,
-            "CORRECTIVE_UPGRADE_READY:1.0.0-rc.21:KEEL_CODEX_HOST_DRIFTED",
-        )
-
-    def test_corrective_admission_rejects_every_unapproved_drift_class(self) -> None:
-        cases: list[tuple[str, dict[str, object], dict[str, object]]] = []
-
-        wrong_runtime = self._corrective_version()
-        wrong_runtime["workbench_commit"] = "0" * 40
-        cases.append(("wrong runtime", wrong_runtime, self._corrective_doctor()))
-
-        wrong_lock = self._corrective_version()
-        wrong_lock["installation_lock_sha256"] = "0" * 64
-        cases.append(("wrong lock", wrong_lock, self._corrective_doctor()))
-
-        damaged_runtime = self._corrective_doctor()
-        damaged_runtime["runtime"] = dict(damaged_runtime["runtime"])
-        damaged_runtime["runtime"]["state"] = "DAMAGED"
-        cases.append(("owned runtime", self._corrective_version(), damaged_runtime))
-
-        second_finding = self._corrective_doctor()
-        second_finding["findings"] = [
-            "KEEL_CODEX_HOST_DRIFTED", "INSTALLATION_LOCK_DRIFT",
-        ]
-        cases.append(("additional finding", self._corrective_version(), second_finding))
-
-        component_drift = self._corrective_doctor()
-        component_drift["components"] = [dict(item) for item in component_drift["components"]]
-        component_drift["components"][0]["state"] = "DRIFTED"
-        cases.append(("component drift", self._corrective_version(), component_drift))
-
-        keel_source_drift = self._corrective_doctor()
-        keel_source_drift["keel"] = dict(keel_source_drift["keel"])
-        keel_source_drift["keel"]["source"] = {
-            "state": "DRIFTED",
-            "commit": installer.APPROVED_CORRECTIVE_PREDECESSORS[0][
-                "required_components"
-            ]["keel"],
-        }
-        cases.append(("Keel source", self._corrective_version(), keel_source_drift))
-
-        for label, version, doctor in cases:
-            with self.subTest(label=label), tempfile.TemporaryDirectory() as temporary:
-                launcher = Path(temporary) / "aven"
-                launcher.write_text("fixture", encoding="utf-8")
-                sequence = [_completed(json.dumps(version))]
-                if label not in {"wrong runtime", "wrong lock"}:
-                    sequence.extend([
-                        _completed(returncode=2),
-                        _completed(json.dumps(doctor), returncode=2),
-                    ])
-                with (
-                    mock.patch("installer._conventional_aven", return_value=launcher),
-                    mock.patch("installer._run", side_effect=sequence),
-                    self.assertRaises(installer.InstallerError) as caught,
-                ):
-                    installer.inspect_existing_aven("linux", self._rc23_channel())
-                self.assertIn(
-                    caught.exception.code,
-                    {"AVEN_DIFFERENT_INSTALLATION", "AVEN_REPAIR_REQUIRED"},
-                )
-
     def test_healthy_rc21_is_not_a_general_skip_predecessor(self) -> None:
+        version = {
+            "status": "INSTALLED",
+            "aven_version": "1.0.0-rc.21",
+            "installation_lock_sha256": "e307f288de5e2d28fcc973c48a4c195de3ccf97f26b07e4147a98e4667bbe066",
+            "workbench_commit": "caf35515f788aba54109d91a17f3c2d421812cbc",
+            "distribution": {
+                "bootstrap_source_commit": "67036f2bf5a2928b84be61c0207824f1f8f32798",
+                "bootstrap_manifest_sha256": "7ec95f68f3436b2d97cf9b980c2da324eb86610d05128a4f0397957767b6d6aa",
+            },
+        }
         with tempfile.TemporaryDirectory() as temporary:
             launcher = Path(temporary) / "aven"
             launcher.write_text("fixture", encoding="utf-8")
@@ -492,14 +347,11 @@ class InstallContractTests(unittest.TestCase):
                 mock.patch("installer._conventional_aven", return_value=launcher),
                 mock.patch(
                     "installer._run",
-                    side_effect=[
-                        _completed(json.dumps(self._corrective_version())),
-                        _completed(json.dumps({"status": "HEALTHY"})),
-                    ],
+                    return_value=_completed(json.dumps(version)),
                 ),
                 self.assertRaises(installer.InstallerError) as caught,
             ):
-                installer.inspect_existing_aven("linux", self._rc23_channel())
+                installer.inspect_existing_aven("linux", self._rc24_channel())
         self.assertEqual(caught.exception.code, "AVEN_DIFFERENT_INSTALLATION")
 
     def test_failed_rc9_is_not_accepted_by_version_ordering(self) -> None:
@@ -555,8 +407,8 @@ class InstallContractTests(unittest.TestCase):
             archive = temp_root / "fixture.tar"
             archive.write_bytes(b"fixture")
             existing = iter([
-                "NORMAL_UPGRADE_READY:1.0.0-rc.22",
-                "NORMAL_UPGRADE_READY:1.0.0-rc.22",
+                "NORMAL_UPGRADE_READY:1.0.0-rc.23",
+                "NORMAL_UPGRADE_READY:1.0.0-rc.23",
             ])
             with (
                 mock.patch("installer.platform_identity", return_value=("linux", "x86_64")),
@@ -585,7 +437,7 @@ class InstallContractTests(unittest.TestCase):
         self.assertEqual(result, 0)
         self.assertEqual(
             calls,
-            ["uninstall:1.0.0-rc.22:--plan", "uninstall:1.0.0-rc.22:--apply", "setup:--plan", "setup:--apply"],
+            ["uninstall:1.0.0-rc.23:--plan", "uninstall:1.0.0-rc.23:--apply", "setup:--plan", "setup:--apply"],
         )
 
     def test_predecessor_uninstall_uses_only_conventional_owned_launcher(self) -> None:
@@ -597,7 +449,7 @@ class InstallContractTests(unittest.TestCase):
                 mock.patch("installer._run", return_value=_completed()) as run,
             ):
                 installer._invoke_predecessor_uninstall(
-                    "linux", "--plan", predecessor_version="1.0.0-rc.22", inherit=False
+                    "linux", "--plan", predecessor_version="1.0.0-rc.23", inherit=False
                 )
         self.assertEqual(run.call_args.args[0], (str(launcher), "uninstall", "--plan"))
         self.assertEqual(run.call_args.kwargs["cwd"], Path.home())
@@ -661,9 +513,9 @@ class InstallContractTests(unittest.TestCase):
             archive = root / "fixture.tar"
             archive.write_bytes(b"fixture")
             classifications = iter([
-                "NORMAL_UPGRADE_READY:1.0.0-rc.22",
-                "NORMAL_UPGRADE_READY:1.0.0-rc.22",
-                "NORMAL_UPGRADE_READY:1.0.0-rc.22",
+                "NORMAL_UPGRADE_READY:1.0.0-rc.23",
+                "NORMAL_UPGRADE_READY:1.0.0-rc.23",
+                "NORMAL_UPGRADE_READY:1.0.0-rc.23",
             ])
             def bootstrap(_python, _bootstrap, action, *, inherit, env):
                 calls.append("bootstrap:" + action)
