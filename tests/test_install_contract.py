@@ -41,6 +41,16 @@ class InstallContractTests(unittest.TestCase):
                     info.linkname = "../../outside"
                     archive.addfile(info)
 
+    def test_macos_entrypoint_discovers_homebrew_python_without_shell_mutation(self) -> None:
+        script = (ROOT / "install.sh").read_text(encoding="utf-8")
+        self.assertIn("/opt/homebrew/bin/python3", script)
+        self.assertIn("/usr/local/bin/python3", script)
+        self.assertIn("AMBIGUOUS_HOMEBREW_PYTHON", script)
+        self.assertIn("shell profiles are unchanged", script)
+        self.assertNotIn("--break-system-packages", script)
+        for shell_file in (".zshrc", ".zprofile", ".bashrc", ".bash_profile", ".profile"):
+            self.assertNotIn(shell_file, script)
+
     def test_safe_extract_accepts_regular_bootstrap(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

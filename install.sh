@@ -74,6 +74,32 @@ find_python() {
       return 0
     fi
   done
+  if [ "$(uname -s 2>/dev/null || printf unknown)" = Darwin ]; then
+    selected=
+    selected_version=
+    conflicts=
+    for candidate in /opt/homebrew/bin/python3 /usr/local/bin/python3; do
+      [ -x "$candidate" ] || continue
+      python_supported "$candidate" || continue
+      version=$(
+        "$candidate" -c 'import sys; print("{}.{}".format(*sys.version_info[:2]))' 2>/dev/null
+      ) || continue
+      if [ -z "$selected" ]; then
+        selected=$candidate
+        selected_version=$version
+      elif [ "$version" != "$selected_version" ]; then
+        conflicts="$selected and $candidate"
+      fi
+    done
+    if [ -n "$conflicts" ]; then
+      printf '%s\n' "AMBIGUOUS_HOMEBREW_PYTHON:$conflicts"
+      return 0
+    fi
+    if [ -n "$selected" ]; then
+      printf '%s\n' "$selected"
+      return 0
+    fi
+  fi
   return 1
 }
 
@@ -106,6 +132,20 @@ install_python() {
 }
 
 PYTHON=$(find_python || true)
+case "$PYTHON" in
+  AMBIGUOUS_HOMEBREW_PYTHON:*)
+    printf '%s\n' \
+      'Aven Installer stopped: AMBIGUOUS_HOMEBREW_PYTHON' \
+      "Multiple supported Homebrew Python installations materially conflict: ${PYTHON#*:}" \
+      'Choose the intended interpreter in PATH and run the installer again. No shell profile was changed.' >&2
+    exit 2
+    ;;
+esac
+case "$PYTHON" in
+  /opt/homebrew/bin/*|/usr/local/bin/*)
+    printf '%s\n' "Aven Installer: using supported Homebrew Python at $PYTHON for this process; shell profiles are unchanged." >&2
+    ;;
+esac
 if [ -z "$PYTHON" ]; then
   if [ "$CHECK" -eq 1 ]; then
     printf '%s\n' 'Aven Installer stopped: PYTHON_TOO_OLD' 'Python 3.11 or newer is required.' >&2
