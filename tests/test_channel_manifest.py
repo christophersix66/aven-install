@@ -19,11 +19,11 @@ class ChannelManifestTests(unittest.TestCase):
         self.assertEqual(value["tag"], "v1.0.0-rc.20")
         self.assertEqual(
             value["commit"],
-            "b520cd46486209b1892b3c23c9b2392e8f6f9365",
+            "3ab8ec016dc078fbe89e8eb7792aadfaf1677e90",
         )
         self.assertEqual(
             value["sha256"],
-            "058aa63e1fa4953a4b40ca7ad4a29fe61d0285edaec51dfd12a9f96e81aa7845",
+            "420d3163fd798716491d3df826e0bcbb3e7108337d8ad8d6d833992a8f0d23e8",
         )
         self.assertTrue(value["prerelease"])
 
