@@ -18,10 +18,17 @@ The installer prints a stable error code followed by the next useful action.
 | `ARTIFACT_SHA256_MISMATCH` | Downloaded bytes or checksum differ | Stop; delete the temporary download and investigate |
 | `ARCHIVE_UNSAFE` | Archive paths/types/bounds are unsafe | Stop; do not extract or execute the artifact |
 | `AVEN_DIFFERENT_INSTALLATION` | Another Aven version/lock already exists | Use explicit Aven lifecycle guidance; no silent update/downgrade occurs |
-| `AVEN_REPAIR_REQUIRED` | The same installation is present but unhealthy | Run `aven status`; repair remains a distinct lifecycle action |
+| `AVEN_REPAIR_REQUIRED` | The installation has drift outside an authorized corrective predecessor contract | Run `aven status` and `aven doctor --installation-only`; do not uninstall if a later approved corrective transition is expected |
+| `AVEN_UPGRADE_SNAPSHOT_FAILED` | The exact predecessor rollback boundary could not be captured | Stop; the predecessor remains intact |
+| `AVEN_UPGRADE_ROLLBACK_FAILED` | A failed target could not restore the exact predecessor | Stop and preserve all state for owner review; do not retry or uninstall |
 | `AVEN_SETUP_PLAN_FAILED` | Aven rejected or could not produce its setup plan | Read Aven's preceding diagnostic and resolve its prerequisite |
 | `AVEN_SETUP_APPLY_FAILED` | Aven setup apply did not complete | Read Aven's diagnostic; rerun the plan before another apply |
 | `AVEN_POST_INSTALL_UNHEALTHY` | Version/status/doctor did not confirm a healthy exact install | Run the installed launcher's `aven status` and `aven doctor` |
+
+RC.23 check mode reports `CORRECTIVE_UPGRADE_READY` only for exact RC.21 with
+the sole authorized host-only finding `KEEL_CODEX_HOST_DRIFTED`. That path is a
+forward correction and does not require wipe/uninstall. No other unhealthy
+installation is admitted.
 
 ## PATH
 

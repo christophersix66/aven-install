@@ -26,25 +26,70 @@ MINIMUM_TOOL_VERSIONS = {"git": (2, 20, 0), "gh": (2, 0, 0)}
 APPROVED_RC = {
     "schema": CHANNEL_SCHEMA,
     "channel": "rc",
-    "version": "1.0.0-rc.22",
+    "version": "1.0.0-rc.23",
     "repository": EXPECTED_REPOSITORY,
-    "tag": "v1.0.0-rc.22",
-    "commit": "7ec3a5d1ef07c18436c5251d9f364681b4250ac8",
-    "asset": "aven-v1.0.0-rc.22-bootstrap-7ec3a5d1ef07.tar",
+    "tag": "v1.0.0-rc.23",
+    "commit": "44e8bcd2e5d1b4a5fec86c7582e05f3aa86565c3",
+    "asset": "aven-v1.0.0-rc.23-bootstrap-44e8bcd2e5d1.tar",
     "asset_size": 573440,
-    "sha256": "a57620a945c11fec3e2d0daa85719d509a094b71499d7a5130eb283775c915af",
-    "checksum_asset": "aven-v1.0.0-rc.22-bootstrap-7ec3a5d1ef07.tar.sha256",
-    "build_report_asset": "aven-v1.0.0-rc.22-bootstrap-7ec3a5d1ef07.build.json",
-    "installation_lock_sha256": "b7eb92066998e488aa6fb45740de52d9ce5467dccf2268cf810ec9751d30f5a4",
-    "workbench_runtime_commit": "80819396ef634256952ed14d68efcca71b1c8520",
+    "sha256": "f6f4addea8996c4df9419cfe6ba3e2229a226d1db558b0999439a2d634d3cbe5",
+    "checksum_asset": "aven-v1.0.0-rc.23-bootstrap-44e8bcd2e5d1.tar.sha256",
+    "build_report_asset": "aven-v1.0.0-rc.23-bootstrap-44e8bcd2e5d1.build.json",
+    "installation_lock_sha256": "02ec8060c4330d69eb044c7f1ed1ac35ca87d2b67395932b1fb716298ae5d47d",
+    "workbench_runtime_commit": "a88748d52ae236e27f51dc077d1cae032ab78b44",
     "prerelease": True,
 }
 APPROVED_HEALTHY_PREDECESSORS = ({
-    "aven_version": "1.0.0-rc.21",
-    "installation_lock_sha256": "e307f288de5e2d28fcc973c48a4c195de3ccf97f26b07e4147a98e4667bbe066",
-    "workbench_commit": "caf35515f788aba54109d91a17f3c2d421812cbc",
-    "bootstrap_source_commit": "67036f2bf5a2928b84be61c0207824f1f8f32798",
-    "bootstrap_manifest_sha256": "7ec95f68f3436b2d97cf9b980c2da324eb86610d05128a4f0397957767b6d6aa",
+    "aven_version": "1.0.0-rc.22",
+    "installation_lock_sha256": "b7eb92066998e488aa6fb45740de52d9ce5467dccf2268cf810ec9751d30f5a4",
+    "workbench_commit": "80819396ef634256952ed14d68efcca71b1c8520",
+    "bootstrap_source_commit": "7ec3a5d1ef07c18436c5251d9f364681b4250ac8",
+    "bootstrap_manifest_sha256": "cbfae2163cf44eef300e640ea9761a29852d48677cd3eb72d479416d86a9651c",
+},)
+CORRECTIVE_PREDECESSOR_SCHEMA = (
+    "intelligence-workbench.aven-corrective-predecessor-admission.v1"
+)
+APPROVED_CORRECTIVE_PREDECESSORS = ({
+    "schema": CORRECTIVE_PREDECESSOR_SCHEMA,
+    "authorization": (
+        "AUTHORIZE_AVEN_RC23_CORRECTIVE_PREDECESSOR_ADMISSION_"
+        "AND_LIFECYCLE_RECOVERY_V1"
+    ),
+    "decision": "ADR-0195",
+    "predecessor": {
+        "aven_version": "1.0.0-rc.21",
+        "installation_lock_sha256": "e307f288de5e2d28fcc973c48a4c195de3ccf97f26b07e4147a98e4667bbe066",
+        "workbench_commit": "caf35515f788aba54109d91a17f3c2d421812cbc",
+        "workbench_tree": "ce645347499d80d3d0012df844e52800c51dc2ff",
+        "bootstrap_source_commit": "67036f2bf5a2928b84be61c0207824f1f8f32798",
+        "bootstrap_manifest_sha256": "7ec95f68f3436b2d97cf9b980c2da324eb86610d05128a4f0397957767b6d6aa",
+    },
+    "allowed_findings": ("KEEL_CODEX_HOST_DRIFTED",),
+    "required_components": {
+        "platform-control": "d2cea2c2f91bf9ee9a88085887b183b746518c3b",
+        "intelligence-platform": "473a05fc14f33f9b056de0921164dca13ff886da",
+        "engineering-intelligence-pack": "b381c489110e1670e64cb75649f1bd918284046e",
+        "legal-intelligence-pack": "64c266113bf54cb4a5a7ffb1555fdb105ea51f0e",
+        "intelligence-workbench": "caf35515f788aba54109d91a17f3c2d421812cbc",
+        "keel": "25f037ae7699f9ccf771c2186d0c1f3fa3f43662",
+        "customBridge": "f26866de8d966f5eb1441d0be7388a49e9eec338",
+    },
+    "required_runtime": {
+        "state": "OWNED_EXACT",
+        "ambient_site_packages_required": False,
+        "dependency_spec_sha256": "8bcbfa19942fc8323e4b47e7354880cff6736b2bea39ac3ebad849e8e56812fa",
+    },
+    "correction_target": {
+        "aven_version": "1.0.0-rc.23",
+        "release_source_binding": "EXACT_APPROVED_CHANNEL_COMMIT",
+        "runtime_binding": "EXACT_APPROVED_CHANNEL_RUNTIME_COMMIT",
+    },
+    "forward_only": True,
+    "required_post_upgrade": {
+        "core_distribution": "HEALTHY",
+        "forbidden_findings": ("KEEL_CODEX_HOST_DRIFTED",),
+        "global_presence": "AVAILABLE",
+    },
 },)
 MAX_MANIFEST_BYTES = 16_384
 MAX_RELEASE_JSON_BYTES = 2_000_000
@@ -139,7 +184,7 @@ def load_channel(path: Path, requested_channel: str) -> Mapping[str, Any]:
     if value != APPROVED_RC:
         raise InstallerError(
             "RELEASE_IDENTITY_NOT_APPROVED",
-            "the rc channel does not match the exact owner-approved Aven v1.0.0-rc.22 release",
+            "the rc channel does not match the exact owner-approved Aven v1.0.0-rc.23 release",
         )
     return value
 
@@ -426,6 +471,92 @@ def _matches_predecessor(
     )
 
 
+def _matches_corrective_identity(
+    value: Mapping[str, Any], contract: Mapping[str, Any]
+) -> bool:
+    predecessor = contract["predecessor"]
+    return (
+        _matches_predecessor(value, predecessor)
+        and value.get("workbench_tree") == predecessor["workbench_tree"]
+    )
+
+
+def _doctor_component_identity(
+    doctor: Mapping[str, Any], contract: Mapping[str, Any]
+) -> bool:
+    expected = contract["required_components"]
+    components = doctor.get("components")
+    if not isinstance(components, list) or len(components) != len(expected):
+        return False
+    observed: dict[str, str] = {}
+    for component in components:
+        if not isinstance(component, dict):
+            return False
+        component_id = component.get("component_id")
+        commit = component.get("desired_commit")
+        if (
+            not isinstance(component_id, str)
+            or component_id in observed
+            or component.get("state") != "INSTALLED_EXACT"
+            or component.get("observed_commit") != commit
+            or not isinstance(commit, str)
+        ):
+            return False
+        observed[component_id] = commit
+    return observed == expected
+
+
+def _authorized_corrective_doctor(
+    doctor: Mapping[str, Any], contract: Mapping[str, Any]
+) -> bool:
+    """Accept only the exact Program-authorized host-only RC.21 defect."""
+    findings = doctor.get("findings")
+    runtime = doctor.get("runtime")
+    aven = doctor.get("aven")
+    keel = doctor.get("keel")
+    required_runtime = contract["required_runtime"]
+    if (
+        doctor.get("schema") != "intelligence-workbench.aven-machine-doctor.v1"
+        or doctor.get("status") != "NEEDS_ATTENTION"
+        or findings != list(contract["allowed_findings"])
+        or not _doctor_component_identity(doctor, contract)
+        or not isinstance(runtime, dict)
+        or any(runtime.get(key) != value for key, value in required_runtime.items())
+        or not isinstance(aven, dict)
+        or aven.get("command") != "EXPECTED"
+        or aven.get("codex_discovery_skill") != "EXPECTED"
+        or aven.get("claude_discovery_skill") != "EXPECTED"
+        or aven.get("installed_identity")
+        != contract["predecessor"]["workbench_commit"]
+        or not isinstance(keel, dict)
+        or keel.get("codex_host_installation") != "DRIFTED"
+    ):
+        return False
+    source = keel.get("source")
+    package = keel.get("codex_package")
+    return (
+        isinstance(source, dict)
+        and source.get("state") == "INSTALLED_EXACT"
+        and source.get("commit") == contract["required_components"]["keel"]
+        and isinstance(package, dict)
+        and package.get("state") == "STAGED_EXACT"
+    )
+
+
+def _corrective_contract_for(
+    value: Mapping[str, Any], channel: Mapping[str, Any]
+) -> Mapping[str, Any] | None:
+    for contract in APPROVED_CORRECTIVE_PREDECESSORS:
+        target = contract["correction_target"]
+        if (
+            target["aven_version"] == channel.get("version")
+            and contract.get("forward_only") is True
+            and _matches_corrective_identity(value, contract)
+        ):
+            return contract
+    return None
+
+
 def inspect_existing_aven(system: str, channel: Mapping[str, Any]) -> str:
     conventional = _conventional_aven(system)
     if not conventional.is_file():
@@ -445,17 +576,53 @@ def inspect_existing_aven(system: str, channel: Mapping[str, Any]) -> str:
         predecessor for predecessor in APPROVED_HEALTHY_PREDECESSORS
         if _matches_predecessor(value, predecessor)
     ), None)
-    if not same and healthy_predecessor is None:
+    corrective = _corrective_contract_for(value, channel)
+    if not same and healthy_predecessor is None and corrective is None:
         raise InstallerError("AVEN_DIFFERENT_INSTALLATION", "a different Aven version or lock is installed; use Aven lifecycle commands explicitly")
     status = _run((command, "--json", "status"), timeout=60)
-    if status.returncode != 0:
+    if status.returncode == 0:
+        status_value = _load_json(status.stdout.encode(), code="AVEN_EXISTING_UNREADABLE", limit=MAX_RELEASE_JSON_BYTES)
+        if status_value.get("status") == "HEALTHY":
+            if corrective is not None and healthy_predecessor is None and not same:
+                raise InstallerError(
+                    "AVEN_DIFFERENT_INSTALLATION",
+                    "exact healthy RC.21 is not an approved RC.23 predecessor",
+                )
+        elif corrective is None:
+            raise InstallerError("AVEN_REPAIR_REQUIRED", "the exact installed Aven version requires repair")
+    elif corrective is None:
         raise InstallerError("AVEN_REPAIR_REQUIRED", "the exact installed Aven version is unhealthy; run: aven status")
-    status_value = _load_json(status.stdout.encode(), code="AVEN_EXISTING_UNREADABLE", limit=MAX_RELEASE_JSON_BYTES)
-    if status_value.get("status") != "HEALTHY":
-        raise InstallerError("AVEN_REPAIR_REQUIRED", "the exact installed Aven version requires repair")
+
+    if corrective is not None:
+        doctor = _run(
+            (command, "doctor", "--installation-only", "--json"), timeout=180
+        )
+        try:
+            doctor_value = _load_json(
+                doctor.stdout.encode(),
+                code="AVEN_EXISTING_UNREADABLE",
+                limit=MAX_RELEASE_JSON_BYTES,
+            )
+        except InstallerError as error:
+            raise InstallerError(
+                "AVEN_REPAIR_REQUIRED",
+                "the RC.21 installation could not prove the authorized corrective defect boundary",
+            ) from error
+        if not _authorized_corrective_doctor(doctor_value, corrective):
+            raise InstallerError(
+                "AVEN_REPAIR_REQUIRED",
+                "the RC.21 installation has drift outside the authorized corrective defect set",
+            )
+        findings = ",".join(corrective["allowed_findings"])
+        return (
+            "CORRECTIVE_UPGRADE_READY:"
+            + corrective["predecessor"]["aven_version"]
+            + ":"
+            + findings
+        )
     return (
         "ALREADY_INSTALLED" if same
-        else "APPROVED_HEALTHY_PREDECESSOR:" + healthy_predecessor["aven_version"]
+        else "NORMAL_UPGRADE_READY:" + healthy_predecessor["aven_version"]
     )
 
 
@@ -637,6 +804,140 @@ def _invoke_predecessor_uninstall(
         raise InstallerError(code, f"the exact Aven {predecessor_version} uninstall {action} did not succeed")
 
 
+def _snapshot_item(path: Path, destination: Path) -> dict[str, Any]:
+    if path.is_symlink():
+        return {"path": str(path), "kind": "symlink", "target": os.readlink(path)}
+    if path.is_file():
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(path, destination)
+        return {"path": str(path), "kind": "file", "snapshot": str(destination)}
+    if path.is_dir():
+        shutil.copytree(path, destination, symlinks=True)
+        return {"path": str(path), "kind": "directory", "snapshot": str(destination)}
+    return {"path": str(path), "kind": "absent"}
+
+
+def _capture_predecessor_snapshot(
+    system: str, destination: Path
+) -> dict[str, Any]:
+    """Capture only lifecycle-owned paths plus the exact Codex integration state."""
+    command = _conventional_aven(system)
+    completed = _run(
+        (str(command), "uninstall", "--plan", "--json"), timeout=600
+    )
+    if completed.returncode != 0:
+        raise InstallerError(
+            "AVEN_UPGRADE_SNAPSHOT_FAILED",
+            "the exact predecessor uninstall plan could not be captured",
+        )
+    plan = _load_json(
+        completed.stdout.encode(),
+        code="AVEN_UPGRADE_SNAPSHOT_FAILED",
+        limit=MAX_RELEASE_JSON_BYTES,
+    )
+    if (
+        plan.get("status") != "READY"
+        or plan.get("user_configuration_preserved") is not True
+        or plan.get("optional_environment_preserved") is not True
+    ):
+        raise InstallerError(
+            "AVEN_UPGRADE_SNAPSHOT_FAILED",
+            "the predecessor does not expose the exact reviewed uninstall boundary",
+        )
+    removable = {
+        "REMOVE_OWNED_LINK", "REMOVE_OWNED_CONTROL_FILE",
+        "REMOVE_OWNED_CONTROL_FILE_LAST", "REMOVE_OWNED_INSTALLATION_ROOT",
+    }
+    selected: list[Path] = []
+    for action in plan.get("actions", []):
+        if not isinstance(action, dict) or action.get("action") not in removable:
+            continue
+        path = Path(str(action.get("path", "")))
+        if not path.is_absolute() or ".." in path.parts:
+            raise InstallerError(
+                "AVEN_UPGRADE_SNAPSHOT_FAILED",
+                "the predecessor plan contained an unsafe owned path",
+            )
+        if path not in selected:
+            selected.append(path)
+
+    codex_home = Path(
+        os.environ.get("CODEX_HOME", str(Path.home() / ".codex"))
+    )
+    if not codex_home.is_absolute() or ".." in codex_home.parts:
+        raise InstallerError(
+            "AVEN_UPGRADE_SNAPSHOT_FAILED", "the Codex integration root is unsafe"
+        )
+    selected.extend((
+        codex_home / "config.toml",
+        codex_home / "plugins/cache/aven-keel",
+    ))
+    records = [
+        _snapshot_item(path, destination / f"item-{index:03d}")
+        for index, path in enumerate(selected)
+    ]
+    return {
+        "schema": "aven-install.predecessor-rollback-snapshot.v1",
+        "installation_id": plan.get("installation_id"),
+        "records": records,
+    }
+
+
+def _remove_snapshot_target(path: Path) -> None:
+    if path.is_symlink() or path.is_file():
+        path.unlink()
+    elif path.is_dir():
+        shutil.rmtree(path)
+
+
+def _restore_predecessor_snapshot(snapshot: Mapping[str, Any]) -> None:
+    if snapshot.get("schema") != "aven-install.predecessor-rollback-snapshot.v1":
+        raise InstallerError(
+            "AVEN_UPGRADE_ROLLBACK_FAILED", "the predecessor rollback snapshot is invalid"
+        )
+    records = snapshot.get("records")
+    if not isinstance(records, list):
+        raise InstallerError(
+            "AVEN_UPGRADE_ROLLBACK_FAILED", "the predecessor rollback snapshot is invalid"
+        )
+    for record in reversed(records):
+        if not isinstance(record, dict):
+            raise InstallerError(
+                "AVEN_UPGRADE_ROLLBACK_FAILED", "the predecessor rollback snapshot is invalid"
+            )
+        _remove_snapshot_target(Path(str(record.get("path", ""))))
+    for record in records:
+        path = Path(str(record["path"]))
+        kind = record.get("kind")
+        if kind == "absent":
+            continue
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if kind == "symlink":
+            os.symlink(str(record["target"]), path)
+        elif kind == "file":
+            shutil.copy2(Path(str(record["snapshot"])), path)
+        elif kind == "directory":
+            shutil.copytree(Path(str(record["snapshot"])), path, symlinks=True)
+        else:
+            raise InstallerError(
+                "AVEN_UPGRADE_ROLLBACK_FAILED", "the predecessor rollback snapshot is invalid"
+            )
+
+
+def _retire_failed_target(system: str) -> None:
+    command = _conventional_aven(system)
+    if not command.is_file():
+        return
+    completed = _run(
+        (str(command), "uninstall", "--apply", "--json"), timeout=600
+    )
+    if completed.returncode != 0:
+        raise InstallerError(
+            "AVEN_UPGRADE_ROLLBACK_FAILED",
+            "the failed target installation could not be retired before rollback",
+        )
+
+
 def post_install_health(system: str, channel: Mapping[str, Any]) -> Path:
     expected = _conventional_aven(system)
     if not expected.is_file():
@@ -652,12 +953,25 @@ def post_install_health(system: str, channel: Mapping[str, Any]) -> Path:
 
 
 def _predecessor_version(classification: str) -> str | None:
-    prefix = "APPROVED_HEALTHY_PREDECESSOR:"
-    return (
-        classification.removeprefix(prefix)
-        if classification.startswith(prefix)
-        else None
-    )
+    for prefix in ("NORMAL_UPGRADE_READY:", "CORRECTIVE_UPGRADE_READY:"):
+        if classification.startswith(prefix):
+            return classification.removeprefix(prefix).split(":", 1)[0]
+    return None
+
+
+def _predecessor_classification(classification: str) -> str | None:
+    if classification.startswith("NORMAL_UPGRADE_READY:"):
+        return "NORMAL_UPGRADE_READY"
+    if classification.startswith("CORRECTIVE_UPGRADE_READY:"):
+        return "CORRECTIVE_UPGRADE_READY"
+    return None
+
+
+def _corrective_findings(classification: str) -> tuple[str, ...]:
+    if not classification.startswith("CORRECTIVE_UPGRADE_READY:"):
+        return ()
+    fields = classification.split(":", 2)
+    return tuple(item for item in fields[2].split(",") if item) if len(fields) == 3 else ()
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -709,8 +1023,19 @@ def main(argv: Sequence[str] | None = None) -> int:
         if arguments.check:
             predecessor_version = _predecessor_version(existing)
             if predecessor_version is not None:
+                classification = _predecessor_classification(existing)
                 print(f"Approved predecessor: {predecessor_version}")
-                print("Predecessor classification: APPROVED_HEALTHY_PREDECESSOR")
+                print(f"Predecessor classification: {classification}")
+                if classification == "CORRECTIVE_UPGRADE_READY":
+                    print(
+                        "Aven Installer detected an exact RC.21 installation with "
+                        "a known host-integration defect that RC.23 is authorized to correct."
+                    )
+                    print(
+                        "Admitted findings: "
+                        + ", ".join(_corrective_findings(existing))
+                    )
+                    print("Unrelated drift detected: NO")
                 print(f"Target release: {channel['version']}")
                 print("Ready to upgrade: YES")
             else:
@@ -756,37 +1081,65 @@ def main(argv: Sequence[str] | None = None) -> int:
                     env=bootstrap_environment,
                 )
             question = (
-                f"Upgrade Aven from exact {predecessor_version} to {channel['version']} now?"
+                (
+                    f"Apply the authorized corrective upgrade from exact "
+                    f"{predecessor_version} to {channel['version']} now?"
+                    if _predecessor_classification(existing) == "CORRECTIVE_UPGRADE_READY"
+                    else f"Upgrade Aven from exact {predecessor_version} to {channel['version']} now?"
+                )
                 if upgrading else "Install Aven now?"
             )
             if not _prompt(question, assume_yes=arguments.yes, non_interactive=arguments.non_interactive):
                 print("Installation cancelled after the zero-effect Aven setup plan.")
                 return 0
-            if upgrading:
-                if inspect_existing_aven(system, channel) != existing:
-                    raise InstallerError(
-                        "AVEN_UPGRADE_PREDECESSOR_CHANGED",
-                        f"the installed Aven {predecessor_version} predecessor changed after planning",
+            snapshot: Mapping[str, Any] | None = None
+            try:
+                if upgrading:
+                    if inspect_existing_aven(system, channel) != existing:
+                        raise InstallerError(
+                            "AVEN_UPGRADE_PREDECESSOR_CHANGED",
+                            f"the installed Aven {predecessor_version} predecessor changed after planning",
+                        )
+                    snapshot = _capture_predecessor_snapshot(
+                        system, root / "predecessor-snapshot"
                     )
-                _invoke_predecessor_uninstall(
-                    system, "--apply", predecessor_version=predecessor_version, inherit=True
-                )
+                    _invoke_predecessor_uninstall(
+                        system, "--apply", predecessor_version=predecessor_version, inherit=True
+                    )
+                    _invoke_bootstrap(
+                        sys.executable,
+                        bootstrap,
+                        "--plan",
+                        inherit=True,
+                        env=bootstrap_environment,
+                    )
                 _invoke_bootstrap(
                     sys.executable,
                     bootstrap,
-                    "--plan",
+                    "--apply",
                     inherit=True,
                     env=bootstrap_environment,
                 )
-            _invoke_bootstrap(
-                sys.executable,
-                bootstrap,
-                "--apply",
-                inherit=True,
-                env=bootstrap_environment,
-            )
+                launcher = post_install_health(system, channel)
+            except Exception as error:
+                if snapshot is not None:
+                    try:
+                        _retire_failed_target(system)
+                        _restore_predecessor_snapshot(snapshot)
+                        if inspect_existing_aven(system, channel) != existing:
+                            raise InstallerError(
+                                "AVEN_UPGRADE_ROLLBACK_FAILED",
+                                "the exact predecessor identity was not restored",
+                            )
+                    except Exception as rollback_error:
+                        if isinstance(rollback_error, InstallerError):
+                            raise rollback_error from error
+                        raise InstallerError(
+                            "AVEN_UPGRADE_ROLLBACK_FAILED",
+                            "the exact predecessor could not be restored",
+                        ) from rollback_error
+                raise
 
-        launcher = post_install_health(system, channel)
         print()
         print("Aven is ready.")
         print(f"Version: {channel['version']}")

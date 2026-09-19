@@ -14,7 +14,7 @@ curl -fsSL https://raw.githubusercontent.com/christophersix66/aven-install/main/
 irm https://raw.githubusercontent.com/christophersix66/aven-install/main/install.ps1 | iex
 ```
 
-The current default channel is explicitly `rc`: Aven `1.0.0-rc.22`. Stable `1.0.0` does not exist and is not silently substituted.
+The current default channel is explicitly `rc`: Aven `1.0.0-rc.23`. Stable `1.0.0` does not exist and is not silently substituted.
 
 ## What the installer does
 
@@ -27,8 +27,9 @@ The current default channel is explicitly `rc`: Aven `1.0.0-rc.22`. Stable `1.0.
 7. Downloads the private release with GitHub CLI into an owned temporary directory.
 8. Verifies the local SHA-256, checksum file, and build report.
 9. Rejects unsafe archive paths, links, devices, collisions, or expansion beyond the fixed bound.
-10. Runs Aven's authoritative `setup --plan`, asks for confirmation, then runs `setup --apply`.
-11. Runs the installed `aven version`, `aven status`, and `aven doctor` and prints first-use commands.
+10. Classifies an existing installation as normal-upgrade-ready, exact corrective-upgrade-ready, already installed, or rejected.
+11. Runs Aven's authoritative plan, asks for confirmation, captures the exact rollback boundary for an upgrade, then applies the target.
+12. Runs the installed `aven version`, `aven status`, and `aven doctor`; a failed upgrade restores the predecessor.
 
 The installer does not acquire or arrange the seven components itself. It stops being responsible once it invokes the verified Aven bootstrap.
 
@@ -71,7 +72,9 @@ less install.sh installer.py channels/rc.json
 ./install.sh --channel rc
 ```
 
-When run from a checkout, the entrypoint automatically uses the adjacent coordinator and channel files and verifies their compiled SHA-256 values. For a reproducible review, check out the exact installer commit accepted by your organization before inspection. The coordinator also fails closed unless the channel is the exact approved private Aven `v1.0.0-rc.22` identity and its tag, source commit, release posture, asset identity, and SHA-256 all match. Exact healthy `1.0.0-rc.21` is the sole approved predecessor. RC.17 remains immutable defective history and no defective-predecessor exception is carried forward. Modified RC.21 installations, unhealthy installations, older releases, and failed candidates are rejected.
+When run from a checkout, the entrypoint automatically uses the adjacent coordinator and channel files and verifies their compiled SHA-256 values. For a reproducible review, check out the exact installer commit accepted by your organization before inspection. The coordinator also fails closed unless the channel is the exact approved private Aven `v1.0.0-rc.23` identity and its tag, source commit, release posture, asset identity, and SHA-256 all match.
+
+Exact healthy RC.22 is the normal predecessor. RC.23 also admits exact RC.21 only when its runtime, tree, lock, bootstrap identity, owned Python environment, every component, Keel source, and staged Keel package are exact and the sole finding is `KEEL_CODEX_HOST_DRIFTED`. Check mode reports `CORRECTIVE_UPGRADE_READY` and the exact admitted finding. Wrong or additional findings, any core drift, healthy RC.21 skip-upgrade, older releases, and downgrade remain rejected. This target-authorized recovery does not reactivate any historical RC.17 exception and does not require uninstalling the known defective RC.21 state first.
 
 ## Non-interactive use
 
@@ -97,7 +100,7 @@ Authentication does not by itself prove authorization; private repository read a
 
 If the exact Aven version, runtime commit, installation lock, and health are already present, the installer returns `ALREADY INSTALLED` without reinstalling.
 
-If a different version or lock is present, it stops. It never silently upgrades or downgrades Aven. Use Aven's own lifecycle commands for deliberate changes.
+If an approved predecessor is present, the installer displays its exact normal or corrective classification and requires explicit upgrade approval. Any other version, lock, or health state stops. It never silently upgrades or downgrades Aven.
 
 ## First use
 
